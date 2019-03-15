@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+#backup
+*.bak
+
+# OBJ directory
+ev3rt-beta7-2-release/hrp2/sdk/OBJ/
+
