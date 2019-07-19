@@ -103,6 +103,24 @@ float Odmetry::getDeltaTheta()
 {
     return mDeltaTheta;
 }
+float Odmetry::getPreTheta(int8_t PreNum)
+{
+
+	int8_t Index;
+	float ret;
+
+	if (PreNum <= mPreThetaNum) {
+		Index = mPreThetaIndex - PreNum;
+		if (Index < 0) {
+			Index += PRETHETAKEEPDNUM;
+		}
+		ret = mPreTheta[Index];
+	} else {
+		ret = 0;
+	}
+
+    return ret;
+}
 /**
  * 位置情報をクリアする
  */
@@ -111,4 +129,20 @@ void Odmetry::clearLocation()
     mX = 0;
     mY = 0;
     mTheta = 0;
+}
+
+/**
+ * カラーセンサ値の保存
+ */
+void Odmetry::KeepPreTheta()
+{
+
+	mPreThetaIndex = (mPreThetaIndex + 1) % PRETHETAKEEPDNUM;
+	mPreTheta[mPreThetaIndex] = mTheta;
+
+	if (mPreThetaNum < PRETHETAKEEPDNUM) {
+		mPreThetaNum++;
+	}
+
+    return ;
 }

@@ -32,6 +32,10 @@ public:
     bool calibrateGyro(bool startTrigger);
     bool calibrateBlack(bool startTrigger);
     bool calibrateWhite(bool startTrigger);
+    bool calibrateBlue(bool startTrigger);
+    bool calibrateRed(bool startTrigger);
+    bool calibrateGreen(bool startTrigger);
+    bool calibrateYellow(bool startTrigger);
     void calibrateLineThreshold();
 
 private:
@@ -40,6 +44,10 @@ private:
         CALIBRATION_GYRO,
         CALIBRATION_BLACK,
 		CALIBRATION_WHITE,
+		CALIBRATION_BLUE,
+		CALIBRATION_RED,
+		CALIBRATION_GREEN,
+		CALIBRATION_YELLOW,
 		CALIBRATION_SET_THRESHOLD,
 		CALIBRATION_COMPLITE
     };
@@ -52,6 +60,10 @@ private:
     void execCalibrationBlack();
     void execCalibrationWhite();
     void execCalibrateLineThreshold();
+    void execCalibrationBlue();
+    void execCalibrationRed();
+    void execCalibrationGreen();
+    void execCalibrationYellow();
 //    void execCalibrationGyroAndTail();
 
     const ev3api::ColorSensor& mColorSensor;
@@ -62,10 +74,15 @@ private:
     bool mIsStartedGyro;
     bool mIsStartedBlack;
     bool mIsStartedWhite;
+    bool mIsStartedBlue = false;
+    bool mIsStartedRed = false;
+    bool mIsStartedGreen = false;
+    bool mIsStartedYellow = false;
     bool CalibrationCompFlag;
     int16_t  mCalCount;
     CalibrationState mCalibrationState;
     int32_t  mSum;
+    Hsv  mHSVSum;
 
 };
 

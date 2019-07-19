@@ -9,9 +9,9 @@
 
 
 // 定数宣言
-const int Calibration::NUM_OF_GYRO_CALIBRATION =  255; // ★キャリブレーション演習修正箇所
-const int Calibration::NUM_OF_BLACK_CALIBRATION = 255; // ★キャリブレーション演習修正箇所
-const int Calibration::NUM_OF_WHITE_CALIBRATION = 255; // ★キャリブレーション演習修正箇所
+const int Calibration::NUM_OF_GYRO_CALIBRATION =  100; // ★キャリブレーション演習修正箇所
+const int Calibration::NUM_OF_BLACK_CALIBRATION = 100; // ★キャリブレーション演習修正箇所
+const int Calibration::NUM_OF_WHITE_CALIBRATION = 100; // ★キャリブレーション演習修正箇所
 
 /**
  * コンストラクタ
@@ -73,6 +73,22 @@ bool Calibration::RunCalibration()
         break;
     case CALIBRATION_WHITE:
         execCalibrationWhite();
+        CalibrationCompFlag = false;
+        break;
+    case CALIBRATION_BLUE:
+    	execCalibrationBlue();
+        CalibrationCompFlag = false;
+        break;
+    case CALIBRATION_RED:
+    	execCalibrationRed();
+        CalibrationCompFlag = false;
+        break;
+    case CALIBRATION_GREEN:
+    	execCalibrationGreen();
+        CalibrationCompFlag = false;
+        break;
+    case CALIBRATION_YELLOW:
+    	execCalibrationYellow();
         CalibrationCompFlag = false;
         break;
     case CALIBRATION_SET_THRESHOLD:
@@ -159,21 +175,62 @@ void Calibration::execCalibrationWhite()
 {
     if (calibrateWhite(mButton->isPushed()) == true)
     {
-    	mCalibrationState = CALIBRATION_COMPLITE;
-    	ev3_lcd_fill_rect(0,0,EV3_LCD_WIDTH,EV3_LCD_HEIGHT,EV3_LCD_WHITE);
-#if RUN_COURSE == RUN_LEFT_COURSE
-    	ev3_lcd_draw_string("LeftCourse", 10, 30);
-		ev3_lcd_draw_string("LeftEdge", 10, 50);
-#elif RUN_COURSE == RUN_RIGHT_COURSE
-    	ev3_lcd_draw_string("RightCourse", 10, 30);
-		ev3_lcd_draw_string("RightEdge", 10, 50);
-#endif
-		ev3_lcd_draw_string("READY", 60, 70);
-        mSound->trumpet();
+    	mCalibrationState = CALIBRATION_BLUE;
+        mSound->ok();
     }
 
 }
 
+/**
+ * 青キャリブレーション
+ */
+void Calibration::execCalibrationBlue()
+{
+    if (calibrateBlue(mButton->isPushed()) == true)
+    {
+    	mCalibrationState = CALIBRATION_RED;
+        mSound->ok();
+    }
+
+}
+
+/**
+ * 赤キャリブレーション
+ */
+void Calibration::execCalibrationRed()
+{
+    if (calibrateRed(mButton->isPushed()) == true)
+    {
+    	mCalibrationState = CALIBRATION_GREEN;
+        mSound->ok();
+    }
+
+}
+/**
+ * 緑キャリブレーション
+ */
+void Calibration::execCalibrationGreen()
+{
+    if (calibrateGreen(mButton->isPushed()) == true)
+    {
+    	mCalibrationState = CALIBRATION_YELLOW;
+        mSound->ok();
+    }
+
+}
+
+/**
+ * 黄色キャリブレーション
+ */
+void Calibration::execCalibrationYellow()
+{
+    if (calibrateYellow(mButton->isPushed()) == true)
+    {
+    	mCalibrationState = CALIBRATION_COMPLITE;
+        mSound->trumpet();
+    }
+
+}
 /**
  * ライントレースの閾値をキャリブレーション
  */
@@ -205,7 +262,7 @@ bool Calibration::calibrateGyro(bool startTrigger)
     if (mIsStartedGyro == false)
     {
         sprintf( buf, "gyro = %03d", sensor);           // ジャイロセンサ値を表示
-        ev3_lcd_draw_string( buf, 0, 50);
+        ev3_lcd_draw_string( buf, 0, 0);
 
         if (startTrigger == true) {
 
@@ -225,8 +282,8 @@ bool Calibration::calibrateGyro(bool startTrigger)
             cal = mSum / NUM_OF_GYRO_CALIBRATION;       // 平均値 ★キャリブレーション演習修正箇所
             mGyroSensor.setOffset(cal);
 
-            sprintf( buf, "gyroOffset = %03d", cal);    // ジャイロオフセット値を表示
-            ev3_lcd_draw_string( buf, 0, 50);
+//            sprintf( buf, "gyroOffset = %03d", cal);    // ジャイロオフセット値を表示
+//            ev3_lcd_draw_string( buf, 0, 50);
 
             finish = true;                              // 次へ
         }
@@ -254,7 +311,7 @@ bool Calibration::calibrateBlack(bool startTrigger)
     if (mIsStartedBlack == false)
     {
         sprintf( buf, "black = %03d", sensor);          // 光センサ値を表示
-        ev3_lcd_draw_string( buf, 0, 70);
+        ev3_lcd_draw_string( buf, 0, 20);
 
         if (startTrigger == true)
         {
@@ -275,7 +332,7 @@ bool Calibration::calibrateBlack(bool startTrigger)
             mLineMonitor->setBlackThreshold(cal);
 
             sprintf( buf, "blackTh = %03d", cal);       // 黒しきい値を表示
-            ev3_lcd_draw_string( buf, 0, 70);
+            ev3_lcd_draw_string( buf, 0, 20);
 
             finish = true;                              // 次へ
         }
@@ -303,7 +360,7 @@ bool Calibration::calibrateWhite(bool startTrigger)
     if (mIsStartedWhite == false)
     {
         sprintf( buf, "white = %03d", sensor);          // 光センサ値を表示
-        ev3_lcd_draw_string( buf, 0, 90);
+        ev3_lcd_draw_string( buf, 0, 30);
 
         if (startTrigger == true)
         {
@@ -324,7 +381,241 @@ bool Calibration::calibrateWhite(bool startTrigger)
             mLineMonitor->setWhiteThreshold(cal);
 
             sprintf( buf, "whiteTh = %03d", cal);       // 白しきい値を表示
-            ev3_lcd_draw_string( buf, 0, 90);
+            ev3_lcd_draw_string( buf, 0, 30);
+
+            finish = true;                              // 次へ
+        }
+    }
+    return finish;
+}
+
+/**
+ * 青色の閾値をキャリブレーションする
+ * ＜戻り値＞
+ *    false: キャリブレーション未完了
+ *    true : キャリブレーション完了
+ */
+bool Calibration::calibrateBlue(bool startTrigger)
+{
+
+    Hsv  cal;
+    bool finish;
+    char buf[256];
+    rgb_raw_t rgb;
+    Hsv hsv;
+
+    finish = false;
+    mColorSensor.getRawColor(rgb);
+    hsv = RGBtoHSV(rgb);
+
+    if (mIsStartedBlue == false)
+    {
+        sprintf( buf, "blue_r = %03d", rgb.r);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 40);
+        sprintf( buf, "blue_g = %03d", rgb.g);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 50);
+        sprintf( buf, "blue_b = %03d", rgb.b);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 60);
+
+        if (startTrigger == true)
+        {
+
+        	mIsStartedBlue = true;
+        	mHSVSum.h = 0;
+        	mHSVSum.s = 0;
+        	mHSVSum.v = 0;
+            mCalCount = 0;
+        }
+    }
+    else
+    {
+    	mHSVSum.h += hsv.h;                                 // 光センサ値を積算
+    	mHSVSum.s += hsv.s;                                 // 光センサ値を積算
+    	mHSVSum.v += hsv.v;                                 // 光センサ値を積算
+        mCalCount++;
+
+        if (mCalCount == NUM_OF_WHITE_CALIBRATION) // 規定回数以上積算
+        {
+            cal.h = mHSVSum.h / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.s = mHSVSum.s / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.v = mHSVSum.v / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            mLineMonitor->setBlueThreshold(cal);
+
+            sprintf( buf, "Blue h = %03d", cal.h);       // 白しきい値を表示
+            ev3_lcd_draw_string( buf, 0, 40);
+
+            finish = true;                              // 次へ
+        }
+    }
+    return finish;
+}
+
+/**
+ * 赤色の閾値をキャリブレーションする
+ * ＜戻り値＞
+ *    false: キャリブレーション未完了
+ *    true : キャリブレーション完了
+ */
+bool Calibration::calibrateRed(bool startTrigger)
+{
+
+    Hsv  cal;
+    bool finish;
+    char buf[256];
+    rgb_raw_t rgb;
+    Hsv hsv;
+
+    finish = false;
+    mColorSensor.getRawColor(rgb);
+    hsv = RGBtoHSV(rgb);
+
+
+    if (mIsStartedRed == false)
+    {
+        sprintf( buf, "red = %03d", hsv.h);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 50);
+
+        if (startTrigger == true)
+        {
+
+        	mIsStartedRed = true;
+        	mHSVSum.h = 0;
+        	mHSVSum.s = 0;
+        	mHSVSum.v = 0;
+            mCalCount = 0;
+        }
+    }
+    else
+    {
+    	mHSVSum.h += hsv.h;                                 // 光センサ値を積算
+    	mHSVSum.s += hsv.s;                                 // 光センサ値を積算
+    	mHSVSum.v += hsv.v;                                 // 光センサ値を積算
+        mCalCount++;
+
+        if (mCalCount == NUM_OF_WHITE_CALIBRATION) // 規定回数以上積算
+        {
+            cal.h = mHSVSum.h / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.s = mHSVSum.s / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.v = mHSVSum.v / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            mLineMonitor->setRedThreshold(cal);
+
+            sprintf( buf, "Red h = %03d", cal.h);       // 白しきい値を表示
+            ev3_lcd_draw_string( buf, 0, 50);
+
+            finish = true;                              // 次へ
+        }
+    }
+    return finish;
+}
+
+/**
+ * 緑色の閾値をキャリブレーションする
+ * ＜戻り値＞
+ *    false: キャリブレーション未完了
+ *    true : キャリブレーション完了
+ */
+bool Calibration::calibrateGreen(bool startTrigger)
+{
+
+    Hsv  cal;
+    bool finish;
+    char buf[256];
+    rgb_raw_t rgb;
+    Hsv hsv;
+
+    finish = false;
+    mColorSensor.getRawColor(rgb);
+    hsv = RGBtoHSV(rgb);
+
+    if (mIsStartedGreen == false)
+    {
+        sprintf( buf, "green = %03d", hsv.h);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 60);
+
+        if (startTrigger == true)
+        {
+
+        	mIsStartedGreen = true;
+        	mHSVSum.h = 0;
+        	mHSVSum.s = 0;
+        	mHSVSum.v = 0;
+            mCalCount = 0;
+        }
+    }
+    else
+    {
+    	mHSVSum.h += hsv.h;                                 // 光センサ値を積算
+    	mHSVSum.s += hsv.s;                                 // 光センサ値を積算
+    	mHSVSum.v += hsv.v;                                 // 光センサ値を積算
+        mCalCount++;
+
+        if (mCalCount == NUM_OF_WHITE_CALIBRATION) // 規定回数以上積算
+        {
+            cal.h = mHSVSum.h / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.s = mHSVSum.s / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.v = mHSVSum.v / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            mLineMonitor->setGreenThreshold(cal);
+
+            sprintf( buf, "green h = %03d", cal.h);       // 白しきい値を表示
+            ev3_lcd_draw_string( buf, 0, 60);
+
+            finish = true;                              // 次へ
+        }
+    }
+    return finish;
+}
+
+/**
+ * 黄色の閾値をキャリブレーションする
+ * ＜戻り値＞
+ *    false: キャリブレーション未完了
+ *    true : キャリブレーション完了
+ */
+bool Calibration::calibrateYellow(bool startTrigger)
+{
+
+    Hsv  cal;
+    bool finish;
+    char buf[256];
+    rgb_raw_t rgb;
+    Hsv hsv;
+
+    finish = false;
+    mColorSensor.getRawColor(rgb);
+    hsv = RGBtoHSV(rgb);
+
+
+    if (mIsStartedYellow == false)
+    {
+        sprintf( buf, "yellow = %03d", hsv.h);          // 光センサ値を表示
+        ev3_lcd_draw_string( buf, 0, 70);
+
+        if (startTrigger == true)
+        {
+
+        	mIsStartedYellow = true;
+        	mHSVSum.h = 0;
+        	mHSVSum.s = 0;
+        	mHSVSum.v = 0;
+            mCalCount = 0;
+        }
+    }
+    else
+    {
+    	mHSVSum.h += hsv.h;                                 // 光センサ値を積算
+    	mHSVSum.s += hsv.s;                                 // 光センサ値を積算
+    	mHSVSum.v += hsv.v;                                 // 光センサ値を積算
+        mCalCount++;
+
+        if (mCalCount == NUM_OF_WHITE_CALIBRATION) // 規定回数以上積算
+        {
+            cal.h = mHSVSum.h / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.s = mHSVSum.s / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            cal.v = mHSVSum.v / NUM_OF_WHITE_CALIBRATION;                                  // 平均値 ★キャリブレーション演習修正箇所
+            mLineMonitor->setYellowThreshold(cal);
+
+            sprintf( buf, "Yellow = %03d", cal.h);       // 白しきい値を表示
+            ev3_lcd_draw_string( buf, 0, 70);
 
             finish = true;                              // 次へ
         }

@@ -6,6 +6,7 @@ APPL_CXXOBJS += \
 	PidController.o \
 	Calibration.o \
 	Tracer.o \
+	Block.o \
 	StateManager.o \
 	RotaryEnc.o \
 	Odmetry.o \
@@ -20,6 +21,10 @@ APPL_CXXOBJS += \
 	TailMotor.o \
 	RunManager.o \
 	Sound.o \
+	LEDColor.o \
+	COM.o \
+	DriveController.o \
+	CommandMaker.o \
 
 SRCLANG := c++
 

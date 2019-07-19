@@ -16,6 +16,7 @@
 #include "MeasureDistance.h"
 #include "Sound.h"
 #include "TailMotor.h"
+#include "LEDColor.h"
 
 class StateManager {
 public:
@@ -31,8 +32,8 @@ public:
 
 	bool TailInit;
 	bool LookUpCompFlag;
+	bool GoalFlag = false;
 
-private:
     enum State {
         UNDEFINED,
     	CALIBRATION,
@@ -44,6 +45,9 @@ private:
     	GARAGE,
         GRAY_DETECT,
     };
+
+private:
+
 
     Tracer* mTracer;
     const Button* mButton;

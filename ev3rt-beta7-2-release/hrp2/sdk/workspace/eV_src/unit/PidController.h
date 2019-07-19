@@ -23,6 +23,7 @@ public:
     int8_t calControlledVariable(int8_t deviation);
 	int8_t LeancalControlledVariable(int8_t deviation);
     void setPID(float kp, float ki, float kd);
+    void setSignFacter(int32_t sign);
 
 private:
     int32_t mDeviation;
@@ -30,10 +31,11 @@ private:
     float mKp;
     float mKi;
     float mKd;
-	
-    const float mLKp = 3.0;
-    const float mLKi = 0.00;
-    const float mLKd = 2.00;
+    float mSign = 1;
+
+    const float mLKp  = 3.0;
+    const float mLKi  = 0.00;
+    const float mLKd  = 2.00;
 };
 
 #endif  // EV3_UNIT_PIDCONTROLLER_H_

@@ -24,9 +24,13 @@
 #include "RunManager.h"
 #include "TailMotor.h"
 #include "Sound.h"
-
+#include "LEDColor.h"
 
 #include "Clock.h"
+#include "Block.h"
+#include "COM.h"
+#include "DriveController.h"
+#include "CommandMaker.h"
 
 // デストラクタ問題の回避
 // https://github.com/ETrobocon/etroboEV3/wiki/problem_and_coping
@@ -38,20 +42,14 @@ using ev3api::GyroSensor;
 using ev3api::Motor;
 using ev3api::Clock;
 
-// Device objects
-// オブジェクトを静的に確保する。
-//ColorSensor gColorSensor(PORT_3);
-//GyroSensor  gGyroSensor(PORT_4);
-//Motor 	  gLeftWheel(PORT_C);
-//Motor 	  gRightWheel(PORT_B);
 // Motor関連
-ev3api::Motor gLeftWheel = MotorDriver::getInstance().getLeftWheel();
+ev3api::Motor gLeftWheel  = MotorDriver::getInstance().getLeftWheel();
 ev3api::Motor gRightWheel = MotorDriver::getInstance().getRightWheel();
 // Sensor関連
 ev3api::TouchSensor gTouchSensor = SensorDriver::getInstance().getTouchSensor();
 ev3api::ColorSensor gColorSensor = SensorDriver::getInstance().getColorSensor();
 ev3api::SonarSensor gSonarSensor = SensorDriver::getInstance().getSonarSensor();
-ev3api::GyroSensor gGyroSensor = SensorDriver::getInstance().getGyroSensor();
+ev3api::GyroSensor 	gGyroSensor  = SensorDriver::getInstance().getGyroSensor();
 
 // オブジェクトの定義
 static LineMonitor	    *gLineMonitor;
@@ -59,16 +57,19 @@ static Tracer	        *gTracer;
 static Button			*gButton;
 static Calibration		*gCalibration;
 static PidController	*gPidController;
-static StateManager *gStateManager;
+static StateManager 	*gStateManager;
 static MeasureDistance	*gMeasureDistance;
 static UI				*gUI;
 static Logger			*gLogger;
-static TailMotor		*gTailMotor;// = TailMotor::getInstance();
+static TailMotor		*gTailMotor;
 static RunManager		*gRunManager;
 static Remote			*gRemote;
 static Odmetry			*gOdmetry;
 static Sound 			*gSound;
 static Clock			*gClock;
+static Block			*gBlock;
+static DriveController	*gDriveController;
+static CommandMaker	*gCommandMaker;
 
 /**
  * EV3システム生成
@@ -90,7 +91,11 @@ static void user_system_create() {
 	gTailMotor		 = TailMotor::getInstance();
 	gSound 			 = Sound::getInstance();
 	gClock			 = new Clock();
-	gStateManager 	= new StateManager(gTracer, gButton, gCalibration, gRemote, gMeasureDistance);
+	gCommandMaker    = new CommandMaker();
+	gStateManager 	 = new StateManager(gTracer, gButton, gCalibration, gRemote, gMeasureDistance);
+	gDriveController = new DriveController(gLineMonitor,gTracer);
+	gBlock		 	 = new Block(gDriveController);
+
 
 	// 初期化完了通知
 	ev3_led_set_color(LED_ORANGE);
@@ -124,23 +129,25 @@ static void user_system_destroy() {
 	delete gTailMotor;
 	delete gSound;
 	delete gClock;
+	delete gBlock;
+	delete gDriveController;
 }
 
-/**
- * トレース実行タイミング
- */
-void ev3_cyc_tracer(intptr_t exinf) {
-	act_tsk(TRACER_TASK);
-}
 
 /**
  * メインタスク
  */
 void main_task(intptr_t unused) {
+
+	/* プログラムのエントリポイント */
+	/* プログラム起動時にはmain_taskの処理が実行される */
+
 	user_system_create();  // センサやモータの初期化処理
 
+	// 周期キャリブレーションタスク開始
+	ev3_sta_cyc(EV3_CYC_CALIB);
+
 	// 周期ハンドラ開始
-	ev3_sta_cyc(EV3_CYC_TRACER);
 	ev3_sta_cyc(EV3_CYC_ODMETRY);
 	ev3_sta_cyc(EV3_CYC_TAILMOTOR);
 
@@ -159,19 +166,31 @@ void main_task(intptr_t unused) {
 }
 
 /**
- * ライントレースタスク
+ * トレーサ周期タスク
+ */
+void ev3_cyc_tracer(intptr_t exinf) {
+	act_tsk(TRACER_TASK);
+}
+
+/**
+ * トレーサタスク
  */
 void tracer_task(intptr_t exinf) {
 	if (ev3_button_is_pressed(BACK_BUTTON)) {
 		wup_tsk(MAIN_TASK);  // バックボタン押下
 	} else {
 
-		gStateManager->run();	// (倒立)走行
+		gStateManager->run();	// 走行
+	}
+
+	if (gStateManager->GoalFlag == true) {
+		ev3_sta_cyc(EV3_CYC_BLOCK);
+		ev3_stp_cyc(EV3_CYC_TRACER);
 	}
 
 #if USE_OUTPUT_LOG
   static int start_flag = 0;
-  if ((gStateManager->mState == 6) // 6はStateManager::WALKING
+  if ((gStateManager->mState == StateManager::WALKING) // 6はStateManager::WALKING
 	&& (start_flag == 0)) {
 	  ev3_sta_cyc(EV3_CYC_LOGGER);
 	  start_flag = 1;
@@ -180,6 +199,65 @@ void tracer_task(intptr_t exinf) {
 
 	ext_tsk();
 }
+/**
+ * ブロックならべ周期タスク
+ */
+void ev3_cyc_block(intptr_t exinf) {
+	act_tsk(BLOCK_TASK);
+}
+
+/**
+ * ブロックならべタスク
+ */
+void block_task(intptr_t exinf) {
+	if (ev3_button_is_pressed(BACK_BUTTON)) {
+		wup_tsk(MAIN_TASK);  // バックボタン押下
+	} else {
+
+		ev3_led_set_color(LED_ORANGE);
+	//	gTracer->RunBlock();
+		gBlock->run();
+
+	}
+
+	if (gBlock->EndFlag == true) {
+
+		ev3_stp_cyc(EV3_CYC_BLOCK);
+		gSound->punch();
+	}
+	ext_tsk();
+}
+
+/**
+ * キャリブレーション周期タスク
+ */
+void ev3_cyc_calib(intptr_t exinf) {
+	act_tsk(CALIB_TASK);
+}
+
+/**
+ * キャリブレーションべタスク
+ */
+void calib_task(intptr_t exinf) {
+
+	bool calib_fin = false;
+	if (ev3_button_is_pressed(BACK_BUTTON)) {
+		wup_tsk(MAIN_TASK);  // バックボタン押下
+	} else {
+
+		ev3_led_set_color(LED_ORANGE);
+		calib_fin = gCalibration->RunCalibration();
+
+	}
+
+	if (calib_fin == true) {
+		ev3_sta_cyc(EV3_CYC_TRACER);
+		ev3_stp_cyc(EV3_CYC_CALIB);
+	}
+
+	ext_tsk();
+}
+
 /**
  * テールモータ周期タスク
  */
@@ -238,16 +316,16 @@ void logger_task(intptr_t exinf){
 	// gLog[15] = gRunManager->dCount;				// 走行区間(kaunto)
 
 //	gLogger->putString("time;x;y;theta;deltaTheta;battery;state;sonardist;Zone;dist;Line;gyro;color;forward;turn;Rpwm;Lpwm;\n\r");
-	gLogger->putString("time;x;y;theta;deltaTheta;sonar;gyro;color;forward;turn;Rpwm;Lpwm;\n\r");
+//	gLogger->putString("time;x;y;theta;deltaTheta;sonar;gyro;color;forward;turn;Rpwm;Lpwm;\n\r");
 
-	gLog[0]  = gOdmetry->getX();					// X座標
-	gLog[1]  = gOdmetry->getY();					// Y座標
-	gLog[2]  = gOdmetry->getTheta();				// 角度
-	gLog[3]  = gOdmetry->getDeltaTheta();		// 角度の時間変化（フィルタ済み）
-	gLog[4]  = gSonarSensor.getDistance();		// 距離センサ
+//	gLog[0]  = gOdmetry->getX();					// X座標
+//	gLog[1]  = gOdmetry->getY();					// Y座標
+//	gLog[2]  = gOdmetry->getTheta();				// 角度
+//	gLog[3]  = gOdmetry->getDeltaTheta();		// 角度の時間変化（フィルタ済み）
+//	gLog[4]  = gSonarSensor.getDistance();		// 距離センサ
+//
+//	gLog[5] = gGyroSensor.getAnglerVelocity();	// ジャイロ値
 
-	gLog[5] = gGyroSensor.getAnglerVelocity();	// ジャイロ値
-	gLog[6] = gColorSensor.getBrightness();
 //	gLog[7]  = gBalancer->getForward();			// Forward値
 //	gLog[8]  = gBalancer->getTurn();				// Turn値
 //	gLog[9]  = gBalancingWalker->getLeftPwm();		//pwm
@@ -258,6 +336,28 @@ void logger_task(intptr_t exinf){
 //	gLog[14]  = gRunManager->dLine;				// 走行区間
 //	gLog[15]  = ev3_battery_voltage_mV();		// バッテリー
 //	gLog[10] = gRunManager->dCount;				//(kaunto)
+
+	gLog[0]  = gColorSensor.getBrightness();
+	gLog[1]  = gLineMonitor->getDeviation();
+	gLog[2]  = gOdmetry->getX();
+	gLog[3]  = gOdmetry->getY();
+	gLog[4]  = gOdmetry->getTheta();
+	gLog[5]  = gTracer->RightPWM;
+	gLog[6]  = gTracer->LeftPWM;
+	gLog[7]  = gTracer->mturn;
+	gLog[8]  = gTracer->tturn;
+	gLog[9]  = gTracer->tagetTheta;
+	gLog[10] = gTracer->ThetaStart;
+
+//	rgb_raw_t rgb;
+//	int t;
+//	gColorSensor.getRawColor(rgb);
+//	t = gColorSensor.getColorNumber();
+//
+//	gLog[0]  = rgb.r;
+//	gLog[1]  = rgb.g;
+//	gLog[2]  = rgb.b;
+//	gLog[3]  = t;
 
 	gLogger->sendLog(gLog,LOG_NUM);				// BlueToothを使ってログをteratermに送る
 }
@@ -275,7 +375,6 @@ void remote_task(intptr_t exinf) {
 //	char debug[50] = {0};
 	gRemote->getsr();										// コマンドを入力
 //	sprintf(debug,"\n\ryou put: %c \n\r",gRemote->c_debug); //
-//	gUI->putString('1');									// コマンドを表示
 
 	/* ロボット停止コマンド */
 	if (gRemote->c == 's') {
@@ -295,6 +394,11 @@ void remote_task(intptr_t exinf) {
 void ui_task(intptr_t exinf){
 //	gUI->putString("\n\rMENU\n\r 1.START\n\r 2.Logger\n\r 3.Remote\n\r 9.STOP\n\r");
 	gUI->putString("\n\rMENU\n\r s.START\n\r");
+#if USE_OUTPUT_LOG
+	gUI->putString("WITH LOG\n");
+#else
+	gUI->putString("WITHOUT LOG\n");
+#endif
 	while(1){
 		if( gUI->getState() == UI::LOGGER){
 			// Logger起動時はMenu画面を飛ばす
@@ -309,7 +413,7 @@ void ui_task(intptr_t exinf){
 #if USE_REMOTE_CONTROL_MODE
 			ev3_sta_cyc(EV3_CYC_REMOTE);
 			//gUI->putString("\n\rREMOTE MODE\n\r");
-			slp_tsk();	// バックボタンが押されるまで待つ
+			slp_tsk();
 #endif
 
 #if USE_OUTPUT_LOG

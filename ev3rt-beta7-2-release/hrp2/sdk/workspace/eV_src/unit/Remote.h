@@ -5,6 +5,7 @@
 #include "Sound.h"
 #include "ev3api.h"
 #include "MotorDriver.h"
+#include "LEDColor.h"
 
 class Remote : public BlueTooth
 {
@@ -25,7 +26,6 @@ private:
 #define SPD_LSB 5
 	void chgSpeed();
 	void setSpeed();
-	void color_yellow();
 	Sound *mSound = Sound::getInstance();
 	ev3api::Motor mRightWheel = MotorDriver::getInstance().getRightWheel();
     ev3api::Motor mLeftWheel  = MotorDriver::getInstance().getLeftWheel();

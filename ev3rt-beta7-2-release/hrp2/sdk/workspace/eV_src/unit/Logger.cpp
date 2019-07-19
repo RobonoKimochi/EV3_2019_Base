@@ -46,12 +46,12 @@ void Logger::sendLog(float data[], unsigned char num)
 
     for(i = 0; i < num; i++){
     	int buf = strlen(mBuffer);
-    	sprintf(&mBuffer[buf],";%07.3f", data[i]);
+    	sprintf(&mBuffer[buf],",%07.3f", data[i]);
 
     }
 
     int buf = strlen(mBuffer);
-    sprintf(&mBuffer[buf],";%s", "\n\r");	// 末尾に改行コードを加える
+    sprintf(&mBuffer[buf],"%s", "\n\r");	// 末尾に改行コードを加える
 
     putString(mBuffer);
 }

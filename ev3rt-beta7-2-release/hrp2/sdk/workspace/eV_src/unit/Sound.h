@@ -13,8 +13,17 @@ class Sound
             return &sound;
         }
         // Sound();
+        void bang();
+        void bomb();
+        void dryy();
+        void gon();
+        void kinoko();
+        void nya();
         void ok();
+        void pon();
+        void punch();
         void ready();
+        void rin();
         void trumpet();
 
         void setVolume(uint8_t volume);

@@ -4,6 +4,7 @@
 // #include "Motor.h"
 #include "MotorDriver.h"
 #include "app.h"
+#include "COM.h"
 
 #define USE_PI
 
@@ -52,7 +53,7 @@ class TailMotor
 		* @detail			引数「angle」からテイルモータの目標角度を設定
 		*/
 		void setAngle( int32_t angle );
-		
+
 		/**
 		* @brief			テイルモータの制御
 		*
@@ -68,7 +69,7 @@ class TailMotor
 		void setTargetAngle(int target);
 
 		void setAngleSlow();	// 車体傾斜用
-	
+
 		void setPWM(int ang);
 
 	    float getDiff();
@@ -77,8 +78,8 @@ class TailMotor
 	bool CompleteDull();
 	void  setTargetAngle();
 
-	
-	
+
+
 /**
 	* @brief			テイルモータの角度取得
 	*
