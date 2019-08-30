@@ -87,21 +87,27 @@ void StateManager::execUndefined()
 
 	ev3_lcd_set_font(EV3_FONT_MEDIUM);
 #if RUN_COURSE == RUN_LEFT_COURSE
-	ev3_lcd_draw_string("LeftCourse", 10, 10);
-	ev3_lcd_draw_string("LeftEdge", 10, 30);
+	ev3_lcd_draw_string("LeftCourse", 70, 90);
 #elif RUN_COURSE == RUN_RIGHT_COURSE
-	ev3_lcd_draw_string("RightCourse", 10, 10);
-	ev3_lcd_draw_string("RightEdge", 10, 30);
+	ev3_lcd_draw_string("RightCourse", 70, 90);
 #endif
+
+#if RUN_EDGE == RUN_LEFT_EDGE
+	ev3_lcd_draw_string("LeftEdge", 70, 110);
+#elif RUN_EDGE == RUN_RIGHT_EDGE
+	ev3_lcd_draw_string("RightEdge", 70, 110);
+#endif
+
+
 	mTailMotor->init(0);
-    mCalibration->init();
+//    mCalibration->init();
     mState = CALIBRATION;
 }
 
 void StateManager::execCalibration()
 {
 
-    if (mCalibration->RunCalibration() == true)
+ //   if (mCalibration->RunCalibration() == true)
     {
     	mState = WAITING_FOR_START;
     }
@@ -138,12 +144,14 @@ void StateManager::execWalking()
         if( mTracer->isFinished() == true)
         {
 
-            mState = SEESAW;
+            mState = FINISH;
+            GoalFlag = true;
 #elif RUN_COURSE == RUN_LEFT_COURSE
-        if( mTracer->isFinished() == true && mMeasureDistance->DetectGate() == true)
+        if( mTracer->isFinished() == true)
         {
 
-            mState = LOOKUPGATE;
+            mState = FINISH;
+        	GoalFlag = true;
 #endif
 		}
 	}

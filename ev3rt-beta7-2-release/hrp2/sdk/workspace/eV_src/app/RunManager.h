@@ -4,6 +4,7 @@
 #include "Odmetry.h"
 #include "Mat.h"
 #include "Sound.h"
+#include "COM.h"
 
 class RunManager {
 public:
@@ -42,7 +43,14 @@ public:
         ZONE10,
         ZONE11,
         ZONE12,
-		ZONE13
+		ZONE13,
+		ZONE14,
+		ZONE15,
+		ZONE16,
+		ZONE17,
+		ZONE18,
+		ZONE19,
+		ZONE20
     };
     void setOrigin();               // 距離を測る時の原点を設定する
     float getDistanceFromOrigin();  // 原点からの距離を測定する
@@ -54,6 +62,7 @@ public:
     uint8_t dLine;    // ライン情報（直線、右曲線、左曲線）
     float dDist;    // 距離
     uint16_t dCount;
+    float dTheta;   // 角度
 
     int8_t calcTurnByTheta(float deviation);
     void setPID(float kp, float ki, float kd);
@@ -63,6 +72,7 @@ private:
     // 距離測定時の原点
     float mXOrigin;
     float mYOrigin;
+    float mTOrigin;
     // 現在位置
     float mX;
     float mY;

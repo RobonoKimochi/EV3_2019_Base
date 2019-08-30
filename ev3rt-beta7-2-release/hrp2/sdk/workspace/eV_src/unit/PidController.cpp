@@ -34,11 +34,6 @@ int8_t PidController::calControlledVariable(int8_t deviation)
 // #define KPID_P_FACTOR       (float)( 2.0)
 // #define KPID_I_FACTOR       (float)( 0.00)
 // #define KPID_D_FACTOR       (float)( 5.00)
-#if RUN_COURSE == RUN_LEFT_COURSE
-#define KPID_EDGE_FACTOR    (int32_t)(-1)        // ライントレース方向 1 or -1
-#elif RUN_COURSE == RUN_RIGHT_COURSE
-#define KPID_EDGE_FACTOR    (int32_t)(-1)        // ライントレース方向 1 or -1
-#endif
 
 #define KPID_TURN_LIMIT     (int32_t)(100)      // 旋回指示値 限界値
 
@@ -59,15 +54,15 @@ int8_t PidController::calControlledVariable(int8_t deviation)
 
     /* P項演算 */
     turn_P = (int32_t)(mKp * (float)brightness_P);
-    turn_P *= KPID_EDGE_FACTOR;
+    turn_P *= mSign;
 
     /* I項演算 */
     turn_I = (int32_t)(mKi * (float)brightness_I);
-    turn_I *= KPID_EDGE_FACTOR;
+    turn_I *= mSign;
 
     /* D項演算 */
     turn_D = (int32_t)(mKd * (float)brightness_D);
-    turn_D *= KPID_EDGE_FACTOR;
+    turn_D *= mSign;
 
     /* 旋回指示値設定   */
     turn = turn_P + turn_I + turn_D;
@@ -97,15 +92,20 @@ void PidController::setPID(float kp, float ki, float kd)
     mKd = kd;
 }
 
+void PidController::setSignFacter(int32_t sign)
+{
+	mSign = sign;
+}
+
 int8_t PidController::LeancalControlledVariable(int8_t deviation)
 {
 // #define KPID_P_FACTOR       (float)( 2.0)
 // #define KPID_I_FACTOR       (float)( 0.00)
 // #define KPID_D_FACTOR       (float)( 5.00)
-#if RUN_COURSE == RUN_LEFT_COURSE
+#if RUN_EDGE == RUN_LEFT_EDGE
 #define KPID_EDGE_FACTOR    (int32_t)(-1)        // ライントレース方向 1 or -1
-#elif RUN_COURSE == RUN_RIGHT_COURSE
-#define KPID_EDGE_FACTOR    (int32_t)(-1)        // ライントレース方向 1 or -1
+#elif RUN_EDGE == RUN_RIGHT_EDGE
+#define KPID_EDGE_FACTOR    (int32_t)(1)        // ライントレース方向 1 or -1
 #endif
 #define KPID_TURN_LIMIT     (int32_t)(100)      // 旋回指示値 限界値
 

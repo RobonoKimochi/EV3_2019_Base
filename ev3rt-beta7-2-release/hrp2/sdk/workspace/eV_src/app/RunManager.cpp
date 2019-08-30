@@ -1,72 +1,52 @@
 #include "RunManager.h"
 #include "app.h"
 
-// テストコース時はTEST_COURSEを「１」 に、本番時は「０」にしてください。
-#define TEST_COURSE (1)
-//#define RUN_COURSE RUN_RIGHT_COURSE
 
 // 次のゾーンに入ったかを判断する際に、コース形状を考慮に入れるかを選択する。
 #define CHECK_COURSE(x) (line == (x))
 //#define CHECK_COURSE(x) (1)
 
-#if RUN_COURSE == RUN_LEFT_COURSE && TEST_COURSE
 // テスト Lコース
-#define ZONE1_LEN 260
-#define ZONE2_LEN 139
-#define ZONE3_LEN 151
-#define ZONE4_LEN 56
-#define ZONE5_LEN 52
-#define ZONE6_LEN 59
-#define ZONE7_LEN 228
-#define ZONE8_LEN 30
-#define ZONE9_LEN 52
-#define GRAY_LEN  13
 
-#elif RUN_COURSE == RUN_LEFT_COURSE && !TEST_COURSE
-// 本番 Lコース
-#define ZONE1_LEN 260
-#define ZONE2_LEN 141
-#define ZONE3_LEN 171
-#define ZONE4_LEN 56
-#define ZONE5_LEN 52
-#define ZONE6_LEN 59
-#define ZONE7_LEN 248
-#define ZONE8_LEN 55
-#define ZONE9_LEN 52
-#define GRAY_LEN  13
-
-#elif RUN_COURSE == RUN_RIGHT_COURSE && TEST_COURSE
-// テスト Rコース
-#define ZONE1_LEN 215
-#define ZONE2_LEN 78
-#define ZONE3_LEN 78
-#define ZONE4_LEN 41
-#define ZONE5_LEN 43 //48
-#define ZONE6_LEN 34
-#define ZONE7_LEN 40 // 52
-#define ZONE8_LEN 45 //50
-#define ZONE9_LEN 45 //50
-#define ZONE10_LEN 230 //257
-#define ZONE11_LEN 30 //48
-#define ZONE12_LEN 10 //48
-#define GRAY_LEN  13
-
-#elif RUN_COURSE == RUN_RIGHT_COURSE && !TEST_COURSE
-// 本番 Rコース
-#define ZONE1_LEN 258
-#define ZONE2_LEN 81
-#define ZONE3_LEN 81
-#define ZONE4_LEN 43
-#define ZONE5_LEN 55
-#define ZONE6_LEN 55
-#define ZONE7_LEN 65
-#define ZONE8_LEN 53
-#define ZONE9_LEN 53
-#define ZONE10_LEN 257
-#define ZONE11_LEN 48
-#define GRAY_LEN  13
-
+#define ZONE1_LEN 80
+//#define ZONE2_LEN 250
+#define ZONE3_LEN  63
+//#define ZONE3_LEN 14
+//#define ZONE4_LEN 318
+#define ZONE5_LEN  16
+//#define ZONE6_LEN 195
+//#define ZONE7_LEN 112
+#define ZONE8_LEN  26
+//#define ZONE9_LEN 52
+#define ZONE10_LEN 91
+#define ZONE12_LEN 17
+#define ZONE15_LEN 41
+#define ZONE16_LEN 168
+#if BLOCK_TEST_MODE
+#if BLOCK_SMALL_TEST_MODE
+#define ZONE18_LEN 7
+#else
+#define ZONE18_LEN 26
 #endif
+#else
+#define ZONE18_LEN 26
+#endif
+#define ZONE20_LEN 7
+
+
+
+#define MIN_THETA ((float)(2.8015926 / 5)) /* 適合値 */
+//#define ZONE2_THETA ((float)(PI / 2))
+#define ZONE2_THETA ((float)(2.8015926 / 2)) /* 適合値 */
+//#define ZONE4_THETA ((float)(PI / 2))
+#define ZONE4_THETA ((float)(2.8015926 / 2)) /* 適合値 */
+#define ZONE6_THETA ((float)(2.8015926 * 13 / 20))
+#define ZONE7_THETA ((float)(2.8015926 * 46 / 40))
+#define ZONE9_THETA ((float)(2.8015926 / 2))
+#define ZONE11_THETA ((float)(2.8015926 / 2))
+#define ZONE13_THETA ((float)(2.8015926 / 4))
+#define ZONE14_THETA ((float)(2.8015926 * 49 / 40))
+#define ZONE17_THETA ((float)(2.8015926 / 2))
 
 /**
  * コンストラクタ
@@ -76,8 +56,13 @@
 RunManager::RunManager()
     : mZone(START),
       mDeltaTheta(0),
+	  dLine(0),
+	  dDist(0),
+	  dCount(0),
+	  dTheta(0),
       mXOrigin(0),
       mYOrigin(0),
+	  mTOrigin(0),
       mX(0),
       mY(0),
       mDistance(0),
@@ -93,10 +78,7 @@ RunManager::RunManager()
  * 現在走行しているコースを判断する関数
  * (前回区間から一定距離以上走行) かつ (ラインの状態が正しい）
  * の2つの条件から区間の切り替わりを判断します
- * 最終的に最後のストレート区間を認識したのちに
- * 難関突破のアプリケーションに切り替えを行います。
  */
-#if RUN_COURSE == RUN_LEFT_COURSE
 
 RunManager::Section RunManager::determineCourse() {
     static uint8_t line;    // ライン情報（直線、右曲線、左曲線）
@@ -106,11 +88,21 @@ RunManager::Section RunManager::determineCourse() {
     dist = (uint16_t)getDistanceFromOrigin();
     dLine = line;
     dDist = dist;
+    dTheta = ABS(mOdmetry->getTheta() - mTOrigin);
 
     switch(mZone) {
     case START:
+#if BLOCK_TEST_MODE
+#if BLOCK_SMALL_TEST_MODE
+        mZone = ZONE18;
+#else
+        mZone = ZONE20_LEN;
+#endif
+#else
         mZone = ZONE1;
+#endif
         setOrigin();
+
         return STRAIGHT_ZONE;
 
     case ZONE1:
@@ -118,213 +110,152 @@ RunManager::Section RunManager::determineCourse() {
 //        if(dist > ZONE1_LEN && CHECK_COURSE(LEFT_CURVE)) {
             mZone = ZONE2;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE2:
-        if(dist > ZONE2_LEN && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE2_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */) {
             mZone = ZONE3;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
-        return LOOSE_CURVE_ZONE;
+        return TIGHT_CURVE_ZONE;
 
     case ZONE3:
         if(dist > ZONE3_LEN) {
 //       	if(dist > ZONE3_LEN && CHECK_COURSE(RIGHT_CURVE)) {
             mZone = ZONE4;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE4:
-        if(dist > ZONE4_LEN && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE4_THETA/* && CHECK_COURSE(STRAIGHT) */) {
             mZone = ZONE5;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
-        return TIGHT_CURVE_ZONE;
+        return LOOSE_CURVE_ZONE;
 
     case ZONE5:
         if(dist > ZONE5_LEN) {
 //       	if(dist > ZONE5_LEN && CHECK_COURSE(RIGHT_CURVE)) {
             mZone = ZONE6;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE6:
-        if(dist > ZONE6_LEN && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE6_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(RIGHT_CURVE)) */) {
             mZone = ZONE7;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
         }
         return TIGHT_CURVE_ZONE;
 
     case ZONE7:
-        if(dist > ZONE7_LEN) {
-//       	if(dist > ZONE7_LEN && CHECK_COURSE(LEFT_CURVE)) {
+        if(dTheta > ZONE7_THETA /*  || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT)) */) {
             mZone = ZONE8;
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
+        }
+        return TIGHT_CURVE_ZONE;
+
+    case ZONE8:
+        if(dist > ZONE8_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE9;
         }
         return STRAIGHT_ZONE;
 
-    case ZONE8:
-        if(CHECK_COURSE(LEFT_CURVE)) {
-            setOrigin();
-//            mSound->ok();
-            mZone = ZONE9;
-        }
-        return TIGHT_CURVE_ZONE;
-
     case ZONE9:
-        if(dist > ZONE8_LEN) {
+        if(dTheta > ZONE9_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) )*/ ) {
             setOrigin();
-//            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE10;
         }
-        return TIGHT_CURVE_ZONE;
-
+        return LOOSE_CURVE_ZONE;
     case ZONE10:
+        if(dist > ZONE10_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE11;
+        }
+        return STRAIGHT_ZONE;
+    case ZONE11:
+        if(dTheta > ZONE11_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) )*/) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE12;
+        }
+        return LOOSE_CURVE_ZONE;
+    case ZONE12:
+        if(dist > ZONE12_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE13;
+        }
+        return STRAIGHT_ZONE;
+    case ZONE13:
+        if(dTheta > ZONE13_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(LEFT_CURVE) ) */ ) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE14;
+        }
+        return LOOSE_CURVE_ZONE;
+    case ZONE14:
+        if(dTheta > ZONE14_THETA /*  || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */ ) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE15;
+        }
+        return TIGHT_CURVE_ZONE;
+    case ZONE15:
+        if(dist > ZONE15_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE16;
+        }
+        return STRAIGHT_ZONE;
+    case ZONE16:
+        if(dist > ZONE16_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE20;
+        }
+        return STRAIGHT_ZONE;
+    case ZONE20:
+        if(dist > ZONE20_LEN) {
+            setOrigin();
+            mSound->ready_flag = true;
+            mZone = ZONE17;
+        }
+        return SLOW;
+    case ZONE17:
+        if(dTheta > ZONE17_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */ ) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE18;
+        }
+        return SLOW;
+    case ZONE18:
+        if(dist > ZONE18_LEN) {
+            setOrigin();
+            mSound->ok_flag = true;
+            mZone = ZONE19;
+        }
+        return SLOW;
+
+    case ZONE19:
         return FINISHED;
     default:
         return SECTION_ERROR;
     }
 }
-
-#elif RUN_COURSE == RUN_RIGHT_COURSE
-
-RunManager::Section RunManager::determineCourse(){
-    static uint8_t line;    // ライン情報（直線、右曲線、左曲線）
-    static uint16_t dist;    // 距離
-
-    line = determineLine();
-    dist = (uint16_t)getDistanceFromOrigin();
-    dLine = line;
-    dDist = dist;
-
-    switch(mZone) {
-    case START:
-        mZone = ZONE1;
-        setOrigin();
-        return STRAIGHT_ZONE;
-
-    case ZONE1:
-        if(dist > ZONE1_LEN) {
-//       	if(dist > ZONE1_LEN && CHECK_COURSE(LEFT_CURVE)) {
-            mZone = ZONE2;
-            setOrigin();
-//            mSound->ok();
-        }
-        return STRAIGHT_ZONE;
-
-    case ZONE2:
-        if(dist > ZONE2_LEN && CHECK_COURSE(LEFT_CURVE)) {
-            mZone = ZONE3;
-            setOrigin();
-            //mSound->ok();
-        }
-        return LOOSE_CURVE_ZONE;
-
-    case ZONE3:
-    	if(dist > ZONE3_LEN){
-//        if(dist > ZONE3_LEN && CHECK_COURSE(STRAIGHT)){
-            mZone = ZONE4;
-            setOrigin();
- //           mSound->ok();
-        }
-        return LOOSE_CURVE_ZONE;
-
-    case ZONE4:
-        if(dist > ZONE4_LEN) {
-//       	if(dist > ZONE4_LEN && CHECK_COURSE(LEFT_CURVE)) {
-            mZone = ZONE5;
-            setOrigin();
-//            mSound->ready();
-        }
-//        return STRAIGHT_ZONE;
-        return STRAIGHT_ZONE;
-
-    case ZONE5:
-        if(dist > ZONE5_LEN && line == STRAIGHT) {
-//      if(dist > ZONE5_LEN && line == LEFT_CURVE) {
-//       	if(dist > ZONE5_LEN && CHECK_COURSE(RIGHT_CURVE)) {
-            mZone = ZONE6;
-            setOrigin();
-//            mSound->ready();
-        }
-        return TIGHT_CURVE_ZONE;
-
-    case ZONE6:
-        if(dist > ZONE6_LEN && CHECK_COURSE(STRAIGHT)) {
-            mZone = ZONE7;
-            setOrigin();
-            //mSound->ok();
-        }
-        return TIGHT_CURVE_ZONE;
-
-    case ZONE7:
-        if(dist > ZONE7_LEN) {
-//       	if(dist > ZONE7_LEN && CHECK_COURSE(RIGHT_CURVE)) {
-            mZone = ZONE8;
-            setOrigin();
-            mSound->ok();
-        }
-        return STRAIGHT_ZONE;
-
-    case ZONE8:
-        if(dist > ZONE8_LEN && CHECK_COURSE(RIGHT_CURVE)) {
-            mZone = ZONE9;
-            setOrigin();
-            //mSound->ready();
-        }
-        return TIGHT_CURVE_ZONE;
-
-    case ZONE9:
-        if(dist > ZONE9_LEN && CHECK_COURSE(STRAIGHT)) {
-            mZone = ZONE10;
-            setOrigin();
-            //mSound->ready();
-        }
-        return TIGHT_CURVE_ZONE;
-
-    case ZONE10:
-      	if(dist > ZONE10_LEN) { /// && CHECK_COURSE(LEFT_CURVE)) {
-            mZone = ZONE11;
-            setOrigin();
-            //mSound->ok();
-        }
-        return STRAIGHT_ZONE;
-
-    case ZONE11:
-        if(dist > ZONE11_LEN) {
-            mZone = ZONE12;
-            setOrigin();
-            //mSound->ok();
-        }
-        return TIGHT_CURVE_ZONE;
-
-    case ZONE12:
-        if(dist > ZONE12_LEN) {
-            mZone = ZONE13;
-            setOrigin();
-            mSound->ok();
-        }
-        return SLOW;
-
-    case ZONE13:
-    	return FINISHED;
-
-    default:
-        return SECTION_ERROR;
-    }
-}
-
-#endif
 
 /**
  * 角度の時間変化率から現在の走行ラインが
@@ -358,6 +289,7 @@ bool RunManager::detectGray(){
 void RunManager::setOrigin(){
     mXOrigin = mOdmetry->getX();
     mYOrigin = mOdmetry->getY();
+    mTOrigin = mOdmetry->getTheta();
 }
 /**
  * 設定した原点から現在地までの直線距離を返す

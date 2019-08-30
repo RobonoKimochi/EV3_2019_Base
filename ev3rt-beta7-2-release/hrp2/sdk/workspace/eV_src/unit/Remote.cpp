@@ -37,7 +37,7 @@ void Remote::getsr()
 void Remote::RemoteControl()
 {
 
-	color_yellow(); /* デバッグ用に光らせる */
+	LEDColor::getInstance()->LEDYellow(); /* デバッグ用に光らせる */
 
     /* 左右輪に出力 */
 	mRightWheel.setPWM(mforward - mturn);
@@ -164,7 +164,7 @@ void Remote::chgSpeed()
     		bt_cmdflg = false;       // if bt_cmdflg == true
     		c = 10;
     	}
-    	mSound->ok(); /* リモート操作用に音を鳴らす */
+    	mSound->kinoko(); /* リモート操作用に音を鳴らす */
     	break;
 
     default:
@@ -264,25 +264,5 @@ void Remote::setState()
 
 	bt_cmdflg = true;
 	return;
-}
-
-void Remote::color_yellow()
-{
-
-	/* 緑とオレンジを交互に光らせて黄色を作る */
-	counter++;
-	if (counter < 5)
-	{
-		ev3_led_set_color(LED_GREEN);
-	}
-	else
-	{
-		ev3_led_set_color(LED_ORANGE);
-		if (counter > 4)
-		{
-			counter = 0;
-		}
-	}
-
 }
 
