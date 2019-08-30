@@ -49,6 +49,11 @@
 #define USE_OUTPUT_LOG		(1)
 
 
+/* CSV出力設定 */
+/* 0:CSV出力なし	1:CSV出力あり */
+#define USE_OUTPUT_CSV		(1)
+
+
 /* ライントレースON */
 /* 0:ライントレースOFF	1:ライントレースON */
 #define USE_LINE_TRACE		(1)
@@ -68,6 +73,18 @@
 /* ルックアップゲートテスト用設定 */
 /* 0:テストモードOFF	1:テストモードON */
 #define LOOKUPGATE_TEST_MODE	(0)
+
+/* ブロックならべテスト用設定 */
+/* 0:テストモードOFF	1:テストモードON */
+#define BLOCK_TEST_MODE	(0)
+
+/* ブロックならべテスト用設定 */
+/* 0:サンプルコース設定	　1:本番コース設定 */
+#define BLOCK_SMALL_TEST_MODE	(0)
+
+/* 紙コース用設定 */
+/* 0:布コース	1:紙コース */
+#define PERPAR_MODE	(0)
 
 /* グレー対応閾値設定 */
 /* 0:グレー対応OFF	1:グレー対応ON */

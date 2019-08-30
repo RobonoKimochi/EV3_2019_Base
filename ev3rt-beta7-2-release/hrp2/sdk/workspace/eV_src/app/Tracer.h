@@ -43,6 +43,7 @@ public:
 	int calcDirection();
 	int calcDirectionBlock(void);
 	void setBlockPID(void);
+	void setStablePID(void);
 
     float mforward;
     float mturn;

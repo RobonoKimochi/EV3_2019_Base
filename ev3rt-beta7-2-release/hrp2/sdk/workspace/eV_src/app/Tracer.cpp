@@ -41,6 +41,9 @@ Tracer::~Tracer() {
 void Tracer::run()
 {
 
+	/* カラーセンサ値を更新 */
+	mLineMonitor->getBright();
+
     // コース状況を判断する
     mSection = mRunManager->determineCourse();
 
@@ -192,21 +195,24 @@ void Tracer::set_PID_forward()
 
         break;
     case RunManager::CURB_ZONE:
-    	mPidController->setPID(0.42, 0, 12.0);
+    	/* 速度20で適合 */
+    	mPidController->setPID(0.5, 0, 9.0);
         break;
     case RunManager::LOOSE_CURVE_ZONE:
-    	mPidController->setPID(0.39, 0, 20.0);
+    	/* 速度20で適合 */
+    	mPidController->setPID(0.5, 0, 9.0);
         break;
     case RunManager::TIGHT_CURVE_ZONE:
-    	mPidController->setPID(0.57, 0, 20.0);
+    	/* 速度20で適合 */
+    	mPidController->setPID(0.75, 0, 5.0);
         break;
     case RunManager::SLOW:
-    	mLineMonitor->LineThresholdGray();
-    	mPidController->setPID(0.5, 0, 40.0);
+    	mforward = 20;
+    	/* 速度20で適合 */
+    	mPidController->setPID(0.75, 0, 5.0);
     	break;
     case RunManager::FINISHED:
         mIsFinished = true;
-    	mLineMonitor->LineThresholdGray();
     	break;
 
     default:
@@ -238,5 +244,10 @@ int Tracer::calcDirectionBlock(void)
 
 void Tracer::setBlockPID(void)
 {
-	mPidController->setPID(0.3, 0, 0.5);
+	mPidController->setPID(0.1, 0, 0.5);
+}
+
+void Tracer::setStablePID(void)
+{
+	mPidController->setPID(0.2, 0, 0.5);
 }

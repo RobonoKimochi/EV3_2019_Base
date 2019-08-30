@@ -44,6 +44,7 @@ public:
 		SEESAW,
     	GARAGE,
         GRAY_DETECT,
+        FINISH
     };
 
 private:

@@ -5,7 +5,9 @@
 /**
  * コンストラクタ
  */
-CommandMaker::CommandMaker()
+CommandMaker::CommandMaker(coord *route, int routeIndex)
+ : gRoute(route),
+   mRouteIndex(routeIndex)
 {
 }
 
@@ -51,8 +53,8 @@ int CommandMaker::calc_pos_relation(int before, int after)
 
 int CommandMaker::calc_next_dir(int a_idx, int a_point_atri)
 {
-	  int move_x = mRoute[a_idx + 1].x - mRoute[a_idx].x;
-	  int move_y = mRoute[a_idx + 1].y - mRoute[a_idx].y;
+	  int move_x = gRoute[a_idx + 1].x - gRoute[a_idx].x;
+	  int move_y = gRoute[a_idx + 1].y - gRoute[a_idx].y;
 	  int dir = 0;
 	  int drive_pos;
 
@@ -101,9 +103,10 @@ void CommandMaker::make_command()
 
   int direction = INIT_DIRECTION;
   int point_atri,next_atri,next_dir,pos_relate;
+  int            next_next_atri,next_next_dir,next_pos_relate;
   for (int idx = 0; idx < mRouteIndex - 1; idx++) {
-      point_atri = get_attri(mRoute[idx    ].x,mRoute[idx    ].y);
-      next_atri  = get_attri(mRoute[idx + 1].x,mRoute[idx + 1].y);
+      point_atri = get_attri(gRoute[idx    ].x,gRoute[idx    ].y);
+      next_atri  = get_attri(gRoute[idx + 1].x,gRoute[idx + 1].y);
 
       next_dir = calc_next_dir(idx, point_atri);
 
@@ -116,7 +119,7 @@ void CommandMaker::make_command()
               if (pos_relate == FOR_POS) {
             	  set_Command(BC_PassCircle);
               } else if (pos_relate == RGT_POS) {
-            	  set_Command(BC_RturnCircle);
+            	  set_Command(BC_RTurnCircle);
               } else if (pos_relate == BAK_POS) {
             	  set_Command(BC_UTurnCircle);
               } else if (pos_relate == LFT_POS) {
@@ -131,23 +134,21 @@ void CommandMaker::make_command()
               if (pos_relate == FOR_POS) {
             	  set_Command(BC_Forward);
               } else if (pos_relate == RGT_POS) {
-            	  set_Command(BC_BackShallow);
-            	  set_Command(BC_Rturn);
-                  set_Command(BC_Half_For);
+            	  set_Command(BC_BackLft);
+                  set_Command(BC_RemainFor);
               } else if (pos_relate == LFT_POS) {
-            	  set_Command(BC_BackDeep);
-            	  set_Command(BC_Ltrun);
-                  set_Command(BC_Half_For);
+            	  set_Command(BC_BackRgt);
+                  set_Command(BC_RemainFor);
               } else {
             	  set_Command(BC_Err_BAR_UT);
               }
           } else if (next_atri == BIN) {
               if (pos_relate == RGT_POS) {
-            	  set_Command(BC_Half_For);
-            	  set_Command(BC_Rturn);
+            	  set_Command(BC_Short_For);
+            	  set_Command(BC_SetRgt);
               } else if (pos_relate == LFT_POS) {
-            	  set_Command(BC_Half_For);
-            	  set_Command(BC_Ltrun);
+            	  set_Command(BC_Short_For);
+            	  set_Command(BC_SetLft);
               } else {
             	  set_Command(BC_ERR_NOT_SET);
               }
@@ -161,7 +162,35 @@ void CommandMaker::make_command()
           } else if (next_atri == BAR) {
 
               if (pos_relate == FOR_POS) {
-            	  set_Command(BC_Set);
+//            	  set_Command(BC_SetRgt);
+              } else if (pos_relate == BAK_POS) {
+
+
+                  if (mCommand[mCmdIndex - 1] == BC_SetRgt) {
+                	  mCmdIndex -= 2;
+                	  set_Command(BC_Half_For);
+                	  set_Command(BC_Rturn);
+
+                  } else {
+                	  mCmdIndex -= 2;
+                	  set_Command(BC_Half_For);
+                	  set_Command(BC_Lturn);
+                  }
+
+                  if(idx < (mRouteIndex - 2) ) {
+                	  next_next_atri = get_attri(gRoute[idx + 2].x,gRoute[idx + 2].y);
+                	  next_next_dir = calc_next_dir(idx + 1, next_next_atri);
+                	  next_pos_relate = calc_pos_relation(next_dir, next_next_dir);
+
+                      if (next_pos_relate == RGT_POS) {
+                    	  set_Command(BC_GetLft);
+                      } else if (next_pos_relate == LFT_POS) {
+                    	  set_Command(BC_GetRgt);
+                      }
+                      idx++;
+                      next_dir = next_next_dir;
+                  }
+
               } else {
             	  set_Command(BC_Err_NOT_BAK);
               }
@@ -175,5 +204,7 @@ void CommandMaker::make_command()
 
       direction = next_dir;
    }
+
+  set_Command(BC_End);
 
 }

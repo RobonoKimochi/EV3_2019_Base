@@ -13,8 +13,9 @@
  *
  *
  */
-Block::Block(DriveController* drivecontroller)
-    : mdrivecontroller(drivecontroller){
+Block::Block(DriveController* drivecontroller, CommandMaker	*commandMaker)
+    : mdrivecontroller(drivecontroller),
+      mCommandMaker(commandMaker){
 }
 
 /**
@@ -31,23 +32,51 @@ void Block::run(void)
 
 	bool FinishFlag = false;
 
-    switch (mCommand[mCommand_index]) {
+	/* カラーセンサ値更新 */
+	mdrivecontroller->SetColor();
+
+    switch (mCommandMaker->mCommand[mCommandMaker->mCommand_index]) {
     case CommandMaker::BC_Forward:
-    	FinishFlag = mdrivecontroller->TraceForward(TARGETDISTANCE);
+    	FinishFlag = mdrivecontroller->TraceForward(FOWARDDISTANCE);
+        break;
+    case CommandMaker::BC_RemainFor:
+    	FinishFlag = mdrivecontroller->TraceForward(REMAINTDISTANCE);
+        break;
+    case CommandMaker::BC_Med_For:
+    	FinishFlag = mdrivecontroller->TraceForward(MEDDISTANCE);
+        break;
+    case CommandMaker::BC_Short_For:
+    	FinishFlag = mdrivecontroller->TraceForward(SHORTDISTANCE);
         break;
     case CommandMaker::BC_Half_For:
     	FinishFlag = mdrivecontroller->TraceForward(HALFDISTANCE);
         break;
-    case CommandMaker::BC_Rturn:
-    	FinishFlag = mdrivecontroller->TurnR();
+    case CommandMaker::BC_GetLft:
+    	FinishFlag = mdrivecontroller->GetLft();
         break;
-    case CommandMaker::BC_Ltrun:
-    	FinishFlag = mdrivecontroller->TurnL();
+    case CommandMaker::BC_GetRgt:
+    	FinishFlag = mdrivecontroller->GetRgt();
+        break;
+    case CommandMaker::BC_Rturn:
+    	FinishFlag = mdrivecontroller->TurnN(((float)(2.6015926 / 2)), -TURNSPEED, TURNSPEED);
+#if RUN_COURSE == RUN_LEFT_COURSE
+    	mdrivecontroller->OffsetFlag = true;
+#else
+    	mdrivecontroller->OffsetFlag = false;
+#endif
+        break;
+    case CommandMaker::BC_Lturn:
+    	FinishFlag = mdrivecontroller->TurnN(((float)(2.6015926 / 2)), TURNSPEED, -TURNSPEED);
+#if RUN_COURSE == RUN_LEFT_COURSE
+    	mdrivecontroller->OffsetFlag = false;
+#else
+    	mdrivecontroller->OffsetFlag = true;
+#endif
     	break;
     case CommandMaker::BC_PassCircle:
     	FinishFlag = mdrivecontroller->ThroughCircle();
     	break;
-    case CommandMaker::BC_RturnCircle:
+    case CommandMaker::BC_RTurnCircle:
     	FinishFlag = mdrivecontroller->RgtTurnCircle();
     	break;
     case CommandMaker::BC_LTurnCircle:
@@ -56,24 +85,29 @@ void Block::run(void)
     case CommandMaker::BC_UTurnCircle:
     	FinishFlag = mdrivecontroller->UTurnCircle();
     	break;
-    case CommandMaker::BC_Set:
-    	FinishFlag = mdrivecontroller->SetToBin();
+    case CommandMaker::BC_SetRgt:
+    	FinishFlag = mdrivecontroller->SetRgt();
     	break;
-    case CommandMaker::BC_BackShallow:
-    	FinishFlag = mdrivecontroller->BackSallow();
+    case CommandMaker::BC_SetLft:
+    	FinishFlag = mdrivecontroller->SetLft();
     	break;
-    case CommandMaker::BC_BackDeep:
-    	FinishFlag = mdrivecontroller->BackDeep();
+    case CommandMaker::BC_BackLft:
+    	FinishFlag = mdrivecontroller->BackLft();
+    	break;
+    case CommandMaker::BC_BackRgt:
+    	FinishFlag = mdrivecontroller->BackRgt();
     	break;
     case CommandMaker::BC_End:
     	EndFlag = true;
+    	mdrivecontroller->SetPWMZero();
     	break;
     default:
         break;
     }
 
     if (FinishFlag == true) {
-    	mCommand_index++;
+    	mSound->ok_flag = true;
+    	mCommandMaker->mCommand_index++;
     }
 
 }

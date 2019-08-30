@@ -31,6 +31,14 @@
 #include "COM.h"
 #include "DriveController.h"
 #include "CommandMaker.h"
+#include "ArmMotor.h"
+#include "Parking.h"
+
+#if USE_OUTPUT_CSV
+    FILE *fp;
+    FILE *fp_ini;
+#define CSV_CYCLE (3000)
+#endif
 
 // デストラクタ問題の回避
 // https://github.com/ETrobocon/etroboEV3/wiki/problem_and_coping
@@ -45,6 +53,8 @@ using ev3api::Clock;
 // Motor関連
 ev3api::Motor gLeftWheel  = MotorDriver::getInstance().getLeftWheel();
 ev3api::Motor gRightWheel = MotorDriver::getInstance().getRightWheel();
+ev3api::Motor gArm        = MotorDriver::getInstance().getArmMotor();
+
 // Sensor関連
 ev3api::TouchSensor gTouchSensor = SensorDriver::getInstance().getTouchSensor();
 ev3api::ColorSensor gColorSensor = SensorDriver::getInstance().getColorSensor();
@@ -70,6 +80,142 @@ static Clock			*gClock;
 static Block			*gBlock;
 static DriveController	*gDriveController;
 static CommandMaker	*gCommandMaker;
+static ArmMotor        *gArmMotor;
+static Parking         *gParking;
+
+static bool ParkingFlag = false;
+#if USE_OUTPUT_CSV
+static float          gCSVdata[20][CSV_CYCLE];
+static unsigned int  CSVCycle = 0;
+static unsigned int  CSVCycle_num = 0;
+#endif
+ /* ↓処理負荷計測用の変数 */
+ /* static float          gCalibTimerS; */
+ /* static float          gCalibTimerE; */
+ /* gCalibTimerS = (float)gClock->now() / 1000.0f; */
+ /* gCalibTimerE = (float)gClock->now() / 1000.0f; */
+//static unsigned int gRouteIndex = 42;
+//static unsigned int gRouteIndex = 13;
+
+/* 複合パターン2 */
+//static unsigned int gRouteIndex = 15;
+/* 複合パターン3 */
+static unsigned int gRouteIndex = 17;
+/* Rコース用 */
+//static unsigned int gRouteIndex = 15;
+
+CommandMaker::coord     gRoute[300] =
+{
+// {0 , 4},
+// {1 , 4},
+// {2 , 4},
+// {3 , 4},
+// {3 , 5},
+// {3 , 4},
+// {4 , 4},
+// {4 , 3},
+// {4 , 2},
+// {4 , 1},
+// {3 , 1},
+// {4 , 1},
+// {4 , 0},
+// {5 , 0},
+// {6 , 0},
+// {6 , 1},
+// {5 , 1},
+// {6 , 1},
+// {6 , 2},
+// {6 , 3},
+// {5 , 3},
+// {6 , 3},
+// {6 , 4},
+// {5 , 4},
+// {5 , 3},
+// {5 , 4},
+// {4 , 4},
+// {3 , 4},
+// {3 , 5},
+// {3 , 4},
+// {2 , 4},
+// {1 , 4},
+// {1 , 3},
+// {1 , 4},
+// {2 , 4},
+// {2 , 3},
+// {1 , 3},
+// {2 , 3},
+// {2 , 4},
+// {3 , 4},
+// {4 , 4},
+
+// {0 , 4},
+// {1 , 4},
+// {2 , 4},
+// {3 , 4},
+// {4 , 4},
+// {4 , 3},
+// {5 , 3},
+// {6 , 3},
+// {6 , 2},
+// {6 , 1},
+// {5 , 1},
+// {6 , 1},
+// {6 , 0},
+
+ /* 複合パターン2 */
+// {0 , 4},
+// {0 , 3},
+// {0 , 2},
+// {1 , 2},
+// {1 , 3},
+// {1 , 4},
+// {2 , 4},
+// {2 , 3},
+// {2 , 2},
+// {1 , 2},
+// {1 , 3},
+// {1 , 2},
+// {2 , 2},
+// {3 , 2},
+// {4 , 2},
+
+ /* 複合パターン3 */
+ {0 , 4},
+ {1 , 4},
+ {1 , 3},
+ {1 , 4},
+ {0 , 4},
+ {0 , 3},
+ {1 , 3},
+ {0 , 3},
+ {0 , 4},
+ {1 , 4},
+ {2 , 4},
+ {2 , 3},
+ {1 , 3},
+ {0 , 3},
+ {0 , 2},
+ {0 , 1},
+ {0 , 0},
+
+ /* Rコース用  */
+// {6 , 4},
+// {5 , 4},
+// {4 , 4},
+// {4 , 3},
+// {4 , 2},
+// {3 , 2},
+// {3 , 1},
+// {3 , 2},
+// {2 , 2},
+// {2 , 3},
+// {1 , 3},
+// {0 , 3},
+// {0 , 4},
+// {0 , 5},
+// {0 , 6},
+
+};
 
 /**
  * EV3システム生成
@@ -91,11 +237,12 @@ static void user_system_create() {
 	gTailMotor		 = TailMotor::getInstance();
 	gSound 			 = Sound::getInstance();
 	gClock			 = new Clock();
-	gCommandMaker    = new CommandMaker();
+	gCommandMaker    = new CommandMaker(&gRoute[0], gRouteIndex);
 	gStateManager 	 = new StateManager(gTracer, gButton, gCalibration, gRemote, gMeasureDistance);
 	gDriveController = new DriveController(gLineMonitor,gTracer);
-	gBlock		 	 = new Block(gDriveController);
-
+	gBlock		 	 = new Block(gDriveController,gCommandMaker);
+	gArmMotor        = ArmMotor::getInstance();
+	gParking		 = new Parking();
 
 	// 初期化完了通知
 	ev3_led_set_color(LED_ORANGE);
@@ -109,6 +256,7 @@ static void user_system_create() {
 static void user_system_destroy() {
 	gLeftWheel.reset();
 	gRightWheel.reset();
+	gArm.reset();
 
 	delete gStateManager;
 	delete gTracer;
@@ -127,10 +275,82 @@ static void user_system_destroy() {
 	delete gOdmetry;
 	delete gRunManager;
 	delete gTailMotor;
-	delete gSound;
+//	delete gSound; /* 暫定 */
 	delete gClock;
 	delete gBlock;
 	delete gDriveController;
+	delete gCommandMaker;
+	delete gArmMotor;
+	delete gParking;
+}
+
+/**
+ * CSVデータ出力
+ */
+static void output_CSV_data() {
+#if USE_OUTPUT_CSV
+	bool chageflag = false;
+	fp = fopen("ev3rt/log/log.csv", "w");
+	fprintf(fp,"Logertime,");
+	fprintf(fp,"X,");
+	fprintf(fp,"Y,");
+	fprintf(fp,"Theta,");
+	fprintf(fp,"dTheta,");
+	fprintf(fp,"bright,");
+	fprintf(fp,"R,");
+	fprintf(fp,"G,");
+	fprintf(fp,"B,");
+	fprintf(fp,"Colortype,");
+	fprintf(fp,"mainState,");
+	fprintf(fp,"dev,");
+	fprintf(fp,"R_PWM,");
+	fprintf(fp,"L_PWM,");
+	fprintf(fp,"mturn,");
+	fprintf(fp,"Tturn,");
+	fprintf(fp,"ThetaStart,");
+	fprintf(fp,"targetTheta,");
+	fprintf(fp,"\n");
+
+    for (unsigned int i =0; i < CSVCycle_num; i++) {
+
+    	if (gCSVdata[10][i] == StateManager::FINISH && chageflag == false) {
+
+    		fprintf(fp,"Logertime,");
+    		fprintf(fp,"X,");
+    		fprintf(fp,"Y,");
+    		fprintf(fp,"Theta,");
+    		fprintf(fp,"dTheta,");
+    		fprintf(fp,"bright,");
+    		fprintf(fp,"R,");
+    		fprintf(fp,"G,");
+    		fprintf(fp,"B,");
+    		fprintf(fp,"Colortype,");
+    		fprintf(fp,"mainState,");
+    		fprintf(fp,"RGB_Bright,");
+    		fprintf(fp,"command_index,");
+    		fprintf(fp,"command,");
+    		fprintf(fp,"CircleState,");
+    		fprintf(fp,"setState,");
+    		fprintf(fp,"BackState,");
+//    		fprintf(fp,"getState,");
+    		fprintf(fp,"h,");
+    		fprintf(fp,"s,");
+    		fprintf(fp,"v,");
+    		fprintf(fp,"\n");
+
+    		chageflag = true;
+    	}
+
+    	for (unsigned int t =0; t < 20; t++) {
+    		fprintf(fp,"%f,",gCSVdata[t][i]);
+    	}
+    	fprintf(fp,"\n");
+    }
+
+    fclose(fp);
+	gSound->dryy();
+#endif
+
 }
 
 
@@ -149,16 +369,20 @@ void main_task(intptr_t unused) {
 
 	// 周期ハンドラ開始
 	ev3_sta_cyc(EV3_CYC_ODMETRY);
-	ev3_sta_cyc(EV3_CYC_TAILMOTOR);
 
 	// UIタスク開始
-	act_tsk(UI_TASK);
+//	act_tsk(UI_TASK);
 
 	slp_tsk();	// バックボタンが押されるまで待つ
 
 	// 周期ハンドラ停止
 	ev3_stp_cyc(EV3_CYC_TRACER);
-	ev3_stp_cyc(EV3_CYC_TAILMOTOR);
+	ev3_stp_cyc(EV3_CYC_BLOCK);
+	ev3_stp_cyc(EV3_CYC_ARM);
+	ev3_stp_cyc(EV3_CYC_LOGGER);
+	ev3_stp_cyc(SOUND_TASK);
+
+	output_CSV_data(); /* csv出力 */
 
 	user_system_destroy();	// 終了処理
 
@@ -214,8 +438,6 @@ void block_task(intptr_t exinf) {
 		wup_tsk(MAIN_TASK);  // バックボタン押下
 	} else {
 
-		ev3_led_set_color(LED_ORANGE);
-	//	gTracer->RunBlock();
 		gBlock->run();
 
 	}
@@ -223,8 +445,14 @@ void block_task(intptr_t exinf) {
 	if (gBlock->EndFlag == true) {
 
 		ev3_stp_cyc(EV3_CYC_BLOCK);
-		gSound->punch();
+		gSound->ready();
+		ParkingFlag = true;
 	}
+
+	if (ParkingFlag == true) {
+		gParking->run();
+	}
+
 	ext_tsk();
 }
 
@@ -251,12 +479,100 @@ void calib_task(intptr_t exinf) {
 	}
 
 	if (calib_fin == true) {
-		ev3_sta_cyc(EV3_CYC_TRACER);
+		act_tsk(CMD_TASK);
 		ev3_stp_cyc(EV3_CYC_CALIB);
 	}
 
 	ext_tsk();
 }
+
+/**
+ * サウンド周期タスク
+ */
+void ev3_cyc_sound(intptr_t exinf) {
+	act_tsk(SOUND_TASK);
+}
+
+/**
+ * サウンドタスク
+ */
+void sound_task(intptr_t exinf) {
+
+	gSound->sound_main();
+
+	ext_tsk();
+}
+
+
+/**
+ * コマンドタスク
+ */
+void cmd_task(intptr_t exinf) {
+
+//	gCommandMaker->make_command();
+
+	act_tsk(INI_TASK);
+	ext_tsk();
+}
+
+/**
+ * 初期ログタスク
+ */
+void ini_task(intptr_t exinf) {
+
+#if USE_OUTPUT_CSV
+	fp_ini = fopen("ev3rt/log/init_log.csv", "w");
+	fprintf(fp_ini,"mBlackThresh , %d \n",gLineMonitor->mBlackThresh);
+	fprintf(fp_ini,"mWhiteThresh , %d \n",gLineMonitor->mWhiteThresh);
+	fprintf(fp_ini,"mLineThreshold , %d \n",gLineMonitor->mLineThreshold);
+	fprintf(fp_ini,"mBlockBlackThresh , %d \n",gLineMonitor->mBlockBlackThresh);
+	fprintf(fp_ini,"mBlockWhiteThresh , %d \n",gLineMonitor->mBlockWhiteThresh);
+	fprintf(fp_ini,"mBlockLineThreshold , %d \n",gLineMonitor->mBlockLineThreshold);
+	fprintf(fp_ini,"mBlueHSV.h , %d \n",gLineMonitor->mBlueHSV.h);
+	fprintf(fp_ini,"mBlueHSV.s , %d \n",gLineMonitor->mBlueHSV.s);
+	fprintf(fp_ini,"mBlueHSV.v , %d \n",gLineMonitor->mBlueHSV.v);
+	fprintf(fp_ini,"mRedHSV.h , %d \n",gLineMonitor->mRedHSV.h);
+	fprintf(fp_ini,"mRedHSV.s , %d \n",gLineMonitor->mRedHSV.s);
+	fprintf(fp_ini,"mRedHSV.v , %d \n",gLineMonitor->mRedHSV.v);
+	fprintf(fp_ini,"mGreenHSV.h , %d \n",gLineMonitor->mGreenHSV.h);
+	fprintf(fp_ini,"mGreenHSV.s , %d \n",gLineMonitor->mGreenHSV.s);
+	fprintf(fp_ini,"mGreenHSV.v , %d \n",gLineMonitor->mGreenHSV.v);
+	fprintf(fp_ini,"mYellowHSV.h , %d \n",gLineMonitor->mYellowHSV.h);
+	fprintf(fp_ini,"mYellowHSV.s , %d \n",gLineMonitor->mYellowHSV.s);
+	fprintf(fp_ini,"mYellowHSV.v , %d \n",gLineMonitor->mYellowHSV.v);
+	fprintf(fp_ini,"mCommand_index , %d \n",gCommandMaker->mCommand_index);
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"ROUTE\n");
+
+	for (unsigned int i =0; i < gRouteIndex; i++) {
+		fprintf(fp_ini,"%d , (%d . %d), \n",i,gRoute[i].x,gRoute[i].y);
+	}
+
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"\n");
+	fprintf(fp_ini,"COMMAND\n");
+
+	for (unsigned int i =0; i < 1000; i++) {
+		fprintf(fp_ini,"%d , %d, \n",i,gCommandMaker->mCommand[i]);
+
+		if (gCommandMaker->mCommand[i] == CommandMaker::BC_End) {
+			break;
+		}
+	}
+	fprintf(fp_ini,"\n");
+    fclose(fp_ini);
+#endif
+
+	ev3_sta_cyc(EV3_CYC_TRACER);
+	ev3_sta_cyc(EV3_CYC_ARM);
+	ev3_sta_cyc(EV3_CYC_SOUND);
+
+	ext_tsk();
+}
+
 
 /**
  * テールモータ周期タスク
@@ -268,9 +584,22 @@ void ev3_cyc_tailmotor(intptr_t exinf) {
  * テールモータタスク
  */
 void tailmotor_task(intptr_t exinf) {
-	if(gStateManager->TailInit == true) {
-//		gTailMotor->moveTail();	// 尻尾制御
-	}
+
+	ext_tsk();
+}
+
+/**
+ * アームモータ周期タスク
+ */
+void ev3_cyc_arm(intptr_t exinf) {
+	act_tsk(ARM_TASK);
+}
+/**
+ * アームモータタスク
+ */
+void arm_task(intptr_t exinf) {
+
+	gArmMotor->moveArmMotor();	// アーム制御
 	ext_tsk();
 }
 /**
@@ -337,17 +666,17 @@ void logger_task(intptr_t exinf){
 //	gLog[15]  = ev3_battery_voltage_mV();		// バッテリー
 //	gLog[10] = gRunManager->dCount;				//(kaunto)
 
-	gLog[0]  = gColorSensor.getBrightness();
-	gLog[1]  = gLineMonitor->getDeviation();
-	gLog[2]  = gOdmetry->getX();
-	gLog[3]  = gOdmetry->getY();
-	gLog[4]  = gOdmetry->getTheta();
-	gLog[5]  = gTracer->RightPWM;
-	gLog[6]  = gTracer->LeftPWM;
-	gLog[7]  = gTracer->mturn;
-	gLog[8]  = gTracer->tturn;
-	gLog[9]  = gTracer->tagetTheta;
-	gLog[10] = gTracer->ThetaStart;
+//	gLog[0]  = gColorSensor.getBrightness();
+//	gLog[1]  = gLineMonitor->getDeviation();
+//	gLog[2]  = gOdmetry->getX();
+//	gLog[3]  = gOdmetry->getY();
+//	gLog[4]  = gOdmetry->getTheta();
+//	gLog[5]  = gTracer->RightPWM;
+//	gLog[6]  = gTracer->LeftPWM;
+//	gLog[7]  = gTracer->mturn;
+//	gLog[8]  = gTracer->tturn;
+//	gLog[9]  = gTracer->tagetTheta;
+//	gLog[10] = gTracer->ThetaStart;
 
 //	rgb_raw_t rgb;
 //	int t;
@@ -358,6 +687,59 @@ void logger_task(intptr_t exinf){
 //	gLog[1]  = rgb.g;
 //	gLog[2]  = rgb.b;
 //	gLog[3]  = t;
+
+
+#if USE_OUTPUT_CSV
+
+	float logtime;
+    Hsv hsv;
+    hsv = RGBtoHSV(gLineMonitor->RGBdata);
+	logtime = (float)gClock->now() / 1000.0f;
+	gCSVdata[0][CSVCycle] = logtime;
+	gCSVdata[1][CSVCycle] = gOdmetry->getX();
+	gCSVdata[2][CSVCycle] = gOdmetry->getY();
+	gCSVdata[3][CSVCycle] = gOdmetry->getTheta();
+	gCSVdata[4][CSVCycle] = gOdmetry->getDeltaTheta();
+	gCSVdata[5][CSVCycle] = gLineMonitor->mBright;
+	gCSVdata[6][CSVCycle] = gLineMonitor->RGBdata.r;
+	gCSVdata[7][CSVCycle] = gLineMonitor->RGBdata.g;
+	gCSVdata[8][CSVCycle] = gLineMonitor->RGBdata.b;
+	gCSVdata[9][CSVCycle] = gLineMonitor->mColorType;
+	gCSVdata[10][CSVCycle] = gStateManager->mState;
+
+	if(gStateManager->mState != StateManager::FINISH) {
+		gCSVdata[11][CSVCycle] = gLineMonitor->getDeviation();
+		gCSVdata[12][CSVCycle] = gTracer->RightPWM;
+		gCSVdata[13][CSVCycle] = gTracer->LeftPWM;
+		gCSVdata[14][CSVCycle] = gTracer->mturn;
+		gCSVdata[15][CSVCycle] = gTracer->tturn;
+		gCSVdata[16][CSVCycle] = gTracer->ThetaStart;
+		gCSVdata[17][CSVCycle] = gTracer->tagetTheta;
+	} else {
+		gCSVdata[11][CSVCycle] = gLineMonitor->rgbTobright();
+		gCSVdata[12][CSVCycle] = gCommandMaker->mCommand_index;
+		gCSVdata[13][CSVCycle] = gCommandMaker->mCommand[gCommandMaker->mCommand_index];
+		gCSVdata[14][CSVCycle] = gDriveController->mCircleState;
+		gCSVdata[15][CSVCycle] = gDriveController->mSetState;
+		gCSVdata[16][CSVCycle] = gDriveController->mBackState;
+//		gCSVdata[17][CSVCycle] = gDriveController->mGetState;
+		gCSVdata[17][CSVCycle] = hsv.h;
+		gCSVdata[18][CSVCycle] = hsv.s;
+		gCSVdata[19][CSVCycle] = hsv.v;
+	}
+
+	if (CSVCycle_num < CSV_CYCLE) {
+		CSVCycle_num++;
+	}
+	CSVCycle++;
+	CSVCycle = CSVCycle % CSV_CYCLE;
+
+	if (ev3_button_is_pressed(BACK_BUTTON)) {
+		wup_tsk(MAIN_TASK);  // バックボタン押下
+	}
+
+#endif
+
 
 	gLogger->sendLog(gLog,LOG_NUM);				// BlueToothを使ってログをteratermに送る
 }

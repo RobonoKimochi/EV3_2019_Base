@@ -25,6 +25,8 @@ APPL_CXXOBJS += \
 	COM.o \
 	DriveController.o \
 	CommandMaker.o \
+	ArmMotor.o \
+	Parking.o \
 
 SRCLANG := c++
 

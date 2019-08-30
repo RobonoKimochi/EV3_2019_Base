@@ -49,7 +49,8 @@ public:
 		ZONE16,
 		ZONE17,
 		ZONE18,
-		ZONE19
+		ZONE19,
+		ZONE20
     };
     void setOrigin();               // 距離を測る時の原点を設定する
     float getDistanceFromOrigin();  // 原点からの距離を測定する

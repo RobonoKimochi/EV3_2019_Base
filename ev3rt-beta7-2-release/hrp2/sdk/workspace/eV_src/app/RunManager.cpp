@@ -7,30 +7,46 @@
 //#define CHECK_COURSE(x) (1)
 
 // テスト Lコース
-#define ZONE1_LEN 540
+
+#define ZONE1_LEN 80
 //#define ZONE2_LEN 250
-#define ZONE3_LEN 318
+#define ZONE3_LEN  63
+//#define ZONE3_LEN 14
 //#define ZONE4_LEN 318
-#define ZONE5_LEN 74
+#define ZONE5_LEN  16
 //#define ZONE6_LEN 195
 //#define ZONE7_LEN 112
-#define ZONE8_LEN 123
+#define ZONE8_LEN  26
 //#define ZONE9_LEN 52
-#define ZONE10_LEN 467
-#define ZONE12_LEN 85
-#define ZONE15_LEN 191
-#define ZONE16_LEN 867
-#define ZONE18_LEN 156
+#define ZONE10_LEN 91
+#define ZONE12_LEN 17
+#define ZONE15_LEN 41
+#define ZONE16_LEN 168
+#if BLOCK_TEST_MODE
+#if BLOCK_SMALL_TEST_MODE
+#define ZONE18_LEN 7
+#else
+#define ZONE18_LEN 26
+#endif
+#else
+#define ZONE18_LEN 26
+#endif
+#define ZONE20_LEN 7
 
-#define ZONE2_THETA ((float)(PI / 2))
-#define ZONE4_THETA ((float)(PI / 2))
-#define ZONE6_THETA ((float)(PI * 3 / 2))
-#define ZONE7_THETA ((float)(PI * 5 / 4))
-#define ZONE9_THETA ((float)(PI / 2))
-#define ZONE11_THETA ((float)(PI / 2))
-#define ZONE13_THETA ((float)(PI / 4))
-#define ZONE14_THETA ((float)(PI * 5 / 4))
-#define ZONE17_THETA ((float)(PI / 2))
+
+
+#define MIN_THETA ((float)(2.8015926 / 5)) /* 適合値 */
+//#define ZONE2_THETA ((float)(PI / 2))
+#define ZONE2_THETA ((float)(2.8015926 / 2)) /* 適合値 */
+//#define ZONE4_THETA ((float)(PI / 2))
+#define ZONE4_THETA ((float)(2.8015926 / 2)) /* 適合値 */
+#define ZONE6_THETA ((float)(2.8015926 * 13 / 20))
+#define ZONE7_THETA ((float)(2.8015926 * 46 / 40))
+#define ZONE9_THETA ((float)(2.8015926 / 2))
+#define ZONE11_THETA ((float)(2.8015926 / 2))
+#define ZONE13_THETA ((float)(2.8015926 / 4))
+#define ZONE14_THETA ((float)(2.8015926 * 49 / 40))
+#define ZONE17_THETA ((float)(2.8015926 / 2))
 
 /**
  * コンストラクタ
@@ -76,7 +92,15 @@ RunManager::Section RunManager::determineCourse() {
 
     switch(mZone) {
     case START:
+#if BLOCK_TEST_MODE
+#if BLOCK_SMALL_TEST_MODE
+        mZone = ZONE18;
+#else
+        mZone = ZONE20_LEN;
+#endif
+#else
         mZone = ZONE1;
+#endif
         setOrigin();
 
         return STRAIGHT_ZONE;
@@ -86,15 +110,15 @@ RunManager::Section RunManager::determineCourse() {
 //        if(dist > ZONE1_LEN && CHECK_COURSE(LEFT_CURVE)) {
             mZone = ZONE2;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE2:
-        if(dTheta > ZONE2_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE2_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */) {
             mZone = ZONE3;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return TIGHT_CURVE_ZONE;
 
@@ -103,15 +127,15 @@ RunManager::Section RunManager::determineCourse() {
 //       	if(dist > ZONE3_LEN && CHECK_COURSE(RIGHT_CURVE)) {
             mZone = ZONE4;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE4:
-        if(dTheta > ZONE4_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE4_THETA/* && CHECK_COURSE(STRAIGHT) */) {
             mZone = ZONE5;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return LOOSE_CURVE_ZONE;
 
@@ -120,101 +144,108 @@ RunManager::Section RunManager::determineCourse() {
 //       	if(dist > ZONE5_LEN && CHECK_COURSE(RIGHT_CURVE)) {
             mZone = ZONE6;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return STRAIGHT_ZONE;
 
     case ZONE6:
-        if(dTheta > ZONE6_THETA || CHECK_COURSE(RIGHT_CURVE)) {
+        if(dTheta > ZONE6_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(RIGHT_CURVE)) */) {
             mZone = ZONE7;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return TIGHT_CURVE_ZONE;
 
     case ZONE7:
-        if(dTheta > ZONE6_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE7_THETA /*  || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT)) */) {
             mZone = ZONE8;
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
         }
         return TIGHT_CURVE_ZONE;
 
     case ZONE8:
         if(dist > ZONE8_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE9;
         }
         return STRAIGHT_ZONE;
 
     case ZONE9:
-        if(dTheta > ZONE9_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE9_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) )*/ ) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE10;
         }
         return LOOSE_CURVE_ZONE;
     case ZONE10:
         if(dist > ZONE10_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE11;
         }
         return STRAIGHT_ZONE;
     case ZONE11:
-        if(dTheta > ZONE9_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE11_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) )*/) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE12;
         }
         return LOOSE_CURVE_ZONE;
     case ZONE12:
         if(dist > ZONE12_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE13;
         }
         return STRAIGHT_ZONE;
     case ZONE13:
-        if(dTheta > ZONE13_THETA || CHECK_COURSE(LEFT_CURVE)) {
+        if(dTheta > ZONE13_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(LEFT_CURVE) ) */ ) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE14;
         }
         return LOOSE_CURVE_ZONE;
     case ZONE14:
-        if(dTheta > ZONE14_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE14_THETA /*  || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */ ) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE15;
         }
         return TIGHT_CURVE_ZONE;
     case ZONE15:
         if(dist > ZONE15_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE16;
         }
         return STRAIGHT_ZONE;
     case ZONE16:
         if(dist > ZONE16_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
+            mZone = ZONE20;
+        }
+        return STRAIGHT_ZONE;
+    case ZONE20:
+        if(dist > ZONE20_LEN) {
+            setOrigin();
+            mSound->ready_flag = true;
             mZone = ZONE17;
         }
         return SLOW;
     case ZONE17:
-        if(dTheta > ZONE17_THETA && CHECK_COURSE(STRAIGHT)) {
+        if(dTheta > ZONE17_THETA /* || ( (dTheta > MIN_THETA) && CHECK_COURSE(STRAIGHT) ) */ ) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE18;
         }
         return SLOW;
     case ZONE18:
-        if(dist > ZONE8_LEN) {
+        if(dist > ZONE18_LEN) {
             setOrigin();
-            mSound->ok();
+            mSound->ok_flag = true;
             mZone = ZONE19;
         }
         return SLOW;

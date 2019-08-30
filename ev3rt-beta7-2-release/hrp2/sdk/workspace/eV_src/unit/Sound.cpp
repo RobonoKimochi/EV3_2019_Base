@@ -18,6 +18,70 @@ void Sound::setVolume(uint8_t volume){
 	ev3_speaker_set_volume(volume);
 }
 
+void Sound::sound_main()
+{
+	if (bang_flag== true) {
+		bang();
+		bang_flag = false;
+	}
+
+	if (bomb_flag== true) {
+		bomb();
+		bomb_flag = false;
+	}
+
+	if (dryy_flag== true) {
+		dryy();
+		dryy_flag = false;
+	}
+
+	if (gon_flag== true) {
+		gon();
+		gon_flag = false;
+	}
+
+	if (kinoko_flag== true) {
+		kinoko();
+		kinoko_flag = false;
+	}
+
+	if (nya_flag== true) {
+		nya();
+		nya_flag = false;
+	}
+
+	if (ok_flag== true) {
+		ok();
+		ok_flag = false;
+	}
+
+	if (pon_flag== true) {
+		pon();
+		pon_flag = false;
+	}
+
+	if (punch_flag== true) {
+		punch();
+		punch_flag = false;
+	}
+
+	if (ready_flag== true) {
+		ready();
+		ready_flag = false;
+	}
+
+	if (rin_flag== true) {
+		rin();
+		rin_flag = false;
+	}
+
+	if (trumpet_flag== true) {
+		trumpet();
+		trumpet_flag = false;
+	}
+
+}
+
 void Sound::bang()
 {
 	ev3_memfile_load("/ev3rt/sounds/bang.wav", &soundfile);

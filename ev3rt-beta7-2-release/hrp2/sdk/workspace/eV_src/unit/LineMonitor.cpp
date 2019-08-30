@@ -29,6 +29,13 @@ LineMonitor::LineMonitor(const ev3api::ColorSensor& colorSensor)
 LineMonitor::~LineMonitor() {
 }
 
+void LineMonitor::getBright(void)
+{
+    // カラーセンサ値を取得
+	mBright = mColorSensor.getBrightness();
+}
+
+
 /**
  * ライン上か否かを判定する
  * @retval true  ライン上
@@ -39,7 +46,7 @@ bool LineMonitor::isOnLine() const
     // 光センサからの取得値を見て
     // 黒以上であれば「true」を、
     // そうでなければ「false」を返す
-    if (mColorSensor.getBrightness() >= mLineThreshold)
+    if (mBright >= mLineThreshold)
     {
         return true;
     }
@@ -63,7 +70,7 @@ void LineMonitor::setLineThreshold(int8_t threshold)
  */
 int8_t LineMonitor::getDeviation() const
 {
-    return (mLineThreshold - mColorSensor.getBrightness());
+    return (mLineThreshold - mBright);
 }
 
 
@@ -269,7 +276,7 @@ bool LineMonitor::DetectEdgeOfdif()
 bool LineMonitor::ColorDiffFromPre()
 {
 
-	int8_t mBrightness = mColorSensor.getBrightness();
+	int8_t mBrightness = mBright;
 	bool ret_;
 
 	if (mBrightness == mPreBrightness)
@@ -308,23 +315,48 @@ colorid_t LineMonitor::JdgColorType(void)
 	colorid_t color = COLOR_NONE;
 
     Hsv hsv;
+    int R_dh;
+    int Y_dh;
     hsv = RGBtoHSV(RGBdata);
 
-    int Hupper;
-    int Hlower;
+//    int Hupper;
+//    int Hlower;
 
-    if (mWhiteHSV.h > mBlackHSV.h) {
-    	Hupper = mWhiteHSV.h + GRAY_THR_H + 30;
-    	Hlower = mBlackHSV.h - GRAY_THR_H;
-    } else {
-    	Hupper = mBlackHSV.h + GRAY_THR_H + 30;
-    	Hlower = mWhiteHSV.h - GRAY_THR_H;
-    }
+//    if (mWhiteHSV.h > mBlackHSV.h) {
+//    	Hupper = mWhiteHSV.h + GRAY_THR_H + 30;
+//    	Hlower = mBlackHSV.h - GRAY_THR_H;
+//    } else {
+//    	Hupper = mBlackHSV.h + GRAY_THR_H + 30;
+//    	Hlower = mWhiteHSV.h - GRAY_THR_H;
+//    }
+//
+//    /* 白黒ライン上判定 */
+//	if ( (Hlower < hsv.h) && (hsv.s < Hupper))
+//	{
+//		color = COLOR_BROWN;
+//	}
 
-    /* 白黒ライン上判定 */
-	if ( (Hlower < hsv.h) && (hsv.s < Hupper))
+
+	if (  (ABS(mWhiteHSV.s - hsv.s) < GRAY_THR_S)
+	    &&(ABS(mWhiteHSV.v - hsv.v) < GRAY_THR_V) )
 	{
 		color = COLOR_BROWN;
+
+	}
+
+
+	/* 360度またぎ対応 */
+	R_dh = mRedHSV.h - hsv.h;
+	if(ABS(R_dh) > 180) {
+		R_dh = mRedHSV.h - hsv.h - 360;
+	}
+
+	if ( (ABS(R_dh) < RED_THR_H)
+		&&(ABS(mRedHSV.s - hsv.s) < RED_THR_S)
+		&&(ABS(mRedHSV.v - hsv.v) < RED_THR_V) )
+	{
+		color = COLOR_RED;
+
 	}
 
 	if ( (ABS(mBlueHSV.h - hsv.h) < BLUE_THR_H)
@@ -333,14 +365,25 @@ colorid_t LineMonitor::JdgColorType(void)
 	{
 		color = COLOR_BLUE;
 
-	} else if
-	    ( (ABS(mRedHSV.h - hsv.h) < RED_THR_H)
-		&&(ABS(mRedHSV.s - hsv.s) < RED_THR_S)
-		&&(ABS(mRedHSV.v - hsv.v) < RED_THR_V) )
-	{
-		color = COLOR_RED;
+	}
 
-	} else if
+	/* 360度またぎ対応 */
+	Y_dh = mYellowHSV.h - hsv.h;
+	if(ABS(Y_dh) > 180) {
+		Y_dh = mYellowHSV.h - hsv.h + 360;
+	}
+
+	if ( (ABS(Y_dh) < YELLOW_THR_H)
+    	&&(ABS(mYellowHSV.s - hsv.s) < YELLOW_THR_S)
+		&&(ABS(mYellowHSV.v - hsv.v) < YELLOW_THR_V) )
+	{
+		if (ABS(R_dh) > ABS(Y_dh)) {
+			color = COLOR_YELLOW;
+		}
+
+	}
+
+	if
 	    ( (ABS(mGreenHSV.h - hsv.h) < GREEN_THR_H)
 		&&(ABS(mGreenHSV.s - hsv.s) < GREEN_THR_S)
 		&&(ABS(mGreenHSV.v - hsv.v) < GREEN_THR_V) )
@@ -348,16 +391,12 @@ colorid_t LineMonitor::JdgColorType(void)
 	{
 		color = COLOR_GREEN;
 
-	} else if
-    	( (ABS(mYellowHSV.h - hsv.h) < YELLOW_THR_H)
-    	&&(ABS(mYellowHSV.s - hsv.s) < YELLOW_THR_S)
-		&&(ABS(mYellowHSV.v - hsv.v) < YELLOW_THR_V) )
-	{
-		color = COLOR_YELLOW;
-
-	} else {
-
 	}
+
+
+
+	/* ログ用に値を更新する */
+	mColorType = color;
 
 	return (color);
 }
@@ -366,9 +405,7 @@ uint16_t LineMonitor::rgbTobright(void) const
 {
 
 	uint16_t bright;
-//	bright = (RGBdata.b + RGBdata.g + RGBdata.r) / 3;
-
-	bright = MED(RGBdata.b,RGBdata.g,RGBdata.r);
+	bright = (RGBdata.b + RGBdata.g + RGBdata.r) / 3;
 
 	return (bright);
 }
@@ -378,5 +415,5 @@ int8_t LineMonitor::getDeviationBlock(void)
 
 	setColor();
 
-    return (mLineThreshold - rgbTobright());
+    return (mBlockLineThreshold - rgbTobright());
 }
