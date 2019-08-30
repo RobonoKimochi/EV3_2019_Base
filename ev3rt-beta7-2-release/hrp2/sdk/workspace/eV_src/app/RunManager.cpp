@@ -96,7 +96,7 @@ RunManager::Section RunManager::determineCourse() {
 #if BLOCK_SMALL_TEST_MODE
         mZone = ZONE18;
 #else
-        mZone = ZONE20_LEN;
+        mZone = ZONE20;
 #endif
 #else
         mZone = ZONE1;
